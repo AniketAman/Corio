@@ -1,41 +1,27 @@
 import { useReview } from '../context/ReviewContext';
+import { Badge } from './ui/badge';
 
 export function StatusBar() {
   const { prData, mode } = useReview();
 
   if (!prData) {
     return (
-      <div style={{
-        padding: '8px 16px',
-        background: '#1e1e1e',
-        borderTop: '1px solid #444',
-        fontSize: '12px',
-        color: '#888'
-      }}>
+      <div className="px-4 py-2 bg-surface border-t border-border text-xs text-text-muted">
         No PR loaded
       </div>
     );
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '16px',
-      padding: '8px 16px',
-      background: '#1e1e1e',
-      borderTop: '1px solid #444',
-      fontSize: '12px',
-      color: '#ccc'
-    }}>
-      <span style={{ color: mode === 'repo' ? '#4ec9b0' : '#888' }}>
-        {mode === 'repo' ? '● repo mode' : '○ standalone mode'}
-      </span>
-      <span>PR #{prData.number}</span>
-      <span>{prData.files.length} files</span>
-      <span>
-        <span style={{ color: '#4ec9b0' }}>+{prData.additions}</span>
-        {' '}
-        <span style={{ color: '#f48771' }}>-{prData.deletions}</span>
+    <div className="flex items-center gap-3 px-4 py-2 bg-surface border-t border-border text-xs">
+      <Badge variant={mode === 'repo' ? 'success' : 'outline'}>
+        {mode === 'repo' ? 'repo mode' : 'standalone'}
+      </Badge>
+      <span className="text-text-secondary">PR #{prData.number}</span>
+      <span className="text-text-muted">{prData.files.length} files</span>
+      <span className="flex gap-1.5">
+        <span className="text-success">+{prData.additions}</span>
+        <span className="text-danger">-{prData.deletions}</span>
       </span>
     </div>
   );

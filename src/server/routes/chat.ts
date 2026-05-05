@@ -5,7 +5,7 @@ import { ReviewMode } from '../types.js';
 export const chatRouter = Router();
 
 chatRouter.post('/chat', (req: Request, res: Response) => {
-  const { question, sessionId, mode, modelId = 'claude-opus-4-6-20250925' } = req.body;
+  const { question, sessionId, mode, modelId = 'opus' } = req.body;
 
   if (!question || !sessionId) {
     res.status(400).json({ error: 'Missing question or sessionId' });

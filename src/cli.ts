@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 import { startServer } from './server/index.js';
-import { spawn } from 'child_process';
+import { spawn, execFile } from 'child_process';
+import { promisify } from 'util';
+import { killAllChildren } from './server/services/claude.js';
+
+const execFileAsync = promisify(execFile);
 
 interface CLIArgs {
   prUrl: string;
@@ -63,11 +67,39 @@ async function findAvailablePort(start: number): Promise<number> {
   });
 }
 
+async function preflight(): Promise<void> {
+  // Check gh is installed
+  try {
+    await execFileAsync('gh', ['--version']);
+  } catch {
+    console.error('Error: GitHub CLI (gh) is not installed. Install: https://cli.github.com/');
+    process.exit(1);
+  }
+
+  // Check gh is authenticated
+  try {
+    await execFileAsync('gh', ['auth', 'status']);
+  } catch {
+    console.error('Error: GitHub CLI is not authenticated. Run: gh auth login');
+    process.exit(1);
+  }
+
+  // Check claude is installed
+  try {
+    await execFileAsync('claude', ['--version']);
+  } catch {
+    console.error('Error: Claude Code CLI is not installed. Install: https://claude.ai/claude-code');
+    process.exit(1);
+  }
+}
+
 async function main() {
   const args = parseArgs();
   if (!args) {
     process.exit(args === null ? 0 : 1);
   }
+
+  await preflight();
 
   const port = args.port || await findAvailablePort(3000);
   const server = await startServer(port);
@@ -85,7 +117,12 @@ async function main() {
   // Graceful shutdown
   const shutdown = () => {
     console.log('\nShutting down...');
+    killAllChildren();
+    const forceExitTimeout = setTimeout(() => {
+      process.exit(1);
+    }, 3000);
     server.close(() => {
+      clearTimeout(forceExitTimeout);
       process.exit(0);
     });
   };

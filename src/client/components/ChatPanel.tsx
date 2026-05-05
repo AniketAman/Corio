@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useReview } from '../context/ReviewContext';
+import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
 
 export function ChatPanel() {
@@ -14,9 +15,8 @@ export function ChatPanel() {
     const question = input.trim();
     setInput('');
     setSending(true);
-    setStreamingMessage(''); // Reset streaming message
+    setStreamingMessage('');
 
-    // Add user message
     addChatMessage({
       role: 'user',
       content: question,
@@ -30,9 +30,7 @@ export function ChatPanel() {
         body: JSON.stringify({ question, sessionId, mode: { type: mode } })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+      if (!response.ok) throw new Error('Failed to send message');
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
@@ -61,16 +59,13 @@ export function ChatPanel() {
 
             if (event === 'message') {
               assistantMessage += data.chunk;
-              // Update streaming message incrementally for live display
               setStreamingMessage(assistantMessage);
             } else if (event === 'done') {
-              // Add final message to history
               addChatMessage({
                 role: 'assistant',
                 content: assistantMessage,
                 timestamp: Date.now()
               });
-              // Clear streaming message
               setStreamingMessage('');
             } else if (event === 'error') {
               console.error('Chat error:', data.message);
@@ -87,28 +82,27 @@ export function ChatPanel() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-3">
         {chatHistory.length === 0 && !streamingMessage ? (
-          <div style={{ color: '#888', fontSize: '13px' }}>
+          <div className="text-text-muted text-xs">
             Ask questions about the code changes...
           </div>
         ) : (
-          <>
+          <div className="space-y-3">
             {chatHistory.map((msg, i) => (
               <div
                 key={i}
-                style={{
-                  marginBottom: '12px',
-                  padding: '8px',
-                  background: msg.role === 'user' ? '#2b2b2b' : '#1e1e1e',
-                  borderRadius: '4px'
-                }}
+                className={`p-2.5 rounded-[var(--radius-sm)] ${
+                  msg.role === 'user'
+                    ? 'bg-surface-elevated border border-border'
+                    : 'bg-surface'
+                }`}
               >
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
+                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-medium">
                   {msg.role === 'user' ? 'You' : 'Assistant'}
                 </div>
-                <div style={{ fontSize: '13px', color: '#ccc' }}>
+                <div className="text-[13px] text-text-secondary prose-review">
                   {msg.role === 'assistant' ? (
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   ) : (
@@ -118,58 +112,37 @@ export function ChatPanel() {
               </div>
             ))}
             {streamingMessage && (
-              <div
-                style={{
-                  marginBottom: '12px',
-                  padding: '8px',
-                  background: '#1e1e1e',
-                  borderRadius: '4px',
-                  opacity: 0.9
-                }}
-              >
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>
-                  Assistant (streaming...)
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-surface opacity-90">
+                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-medium flex items-center gap-1.5">
+                  Assistant
+                  <span className="w-1 h-1 rounded-full bg-accent animate-pulse" />
                 </div>
-                <div style={{ fontSize: '13px', color: '#ccc' }}>
+                <div className="text-[13px] text-text-secondary prose-review">
                   <ReactMarkdown>{streamingMessage}</ReactMarkdown>
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
-      <div style={{ padding: '12px', borderTop: '1px solid #444' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="p-3 border-t border-border-subtle">
+        <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question..."
             disabled={!sessionId || sending}
-            style={{
-              flex: 1,
-              padding: '8px',
-              background: '#2b2b2b',
-              color: '#fff',
-              border: '1px solid #444',
-              borderRadius: '4px'
-            }}
+            className="flex-1 h-8 px-3 bg-surface-elevated text-text-primary border border-border rounded-[var(--radius-sm)] text-xs placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all disabled:opacity-50"
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
-          <button
+          <Button
             onClick={handleSend}
             disabled={!sessionId || sending}
-            style={{
-              padding: '8px 16px',
-              background: !sessionId || sending ? '#444' : '#0078d4',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: !sessionId || sending ? 'not-allowed' : 'pointer'
-            }}
+            size="sm"
           >
             Send
-          </button>
+          </Button>
         </div>
       </div>
     </div>

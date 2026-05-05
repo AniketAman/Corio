@@ -21,3 +21,8 @@ class FileCache {
 }
 
 export const fileCache = new FileCache();
+
+// Store the current review's repoRoot so file content route can use git show
+let _repoRoot: string | undefined;
+export function setRepoRoot(root: string | undefined) { _repoRoot = root; }
+export function getRepoRoot(): string | undefined { return _repoRoot; }

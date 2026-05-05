@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { reviewRouter } from './routes/review.js';
 import { chatRouter } from './routes/chat.js';
 import { fileRouter } from './routes/file.js';
+import { presetsRouter } from './routes/presets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,11 +20,12 @@ export function createServer() {
   app.use('/api', reviewRouter);
   app.use('/api', chatRouter);
   app.use('/api', fileRouter);
+  app.use('/api', presetsRouter);
 
   // Serve static frontend in production
   const clientPath = join(__dirname, '../../client');
   app.use(express.static(clientPath));
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(join(clientPath, 'index.html'));
   });
 

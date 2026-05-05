@@ -19,9 +19,10 @@ export function DiffViewer() {
       const repo = `${prData.owner}/${prData.repo}`;
 
       try {
+        const params = (ref: string) => new URLSearchParams({ repo, ref, path: selectedFile }).toString();
         const [baseRes, headRes] = await Promise.all([
-          fetch(`/api/file-content?repo=${repo}&ref=${prData.baseRef}&path=${selectedFile}`),
-          fetch(`/api/file-content?repo=${repo}&ref=${prData.headRef}&path=${selectedFile}`)
+          fetch(`/api/file-content?${params(prData.baseRef)}`),
+          fetch(`/api/file-content?${params(prData.headRef)}`)
         ]);
 
         const baseData = await baseRes.json();
@@ -30,23 +31,15 @@ export function DiffViewer() {
         setOriginal(baseData.content || '');
         setModified(headData.content || '');
 
-        // Detect language from file extension
         const ext = selectedFile.split('.').pop()?.toLowerCase() || '';
         const langMap: Record<string, string> = {
-          ts: 'typescript',
-          tsx: 'typescript',
-          js: 'javascript',
-          jsx: 'javascript',
-          py: 'python',
-          go: 'go',
-          rs: 'rust',
-          java: 'java',
-          cpp: 'cpp',
-          c: 'c',
-          md: 'markdown',
-          json: 'json',
-          yaml: 'yaml',
-          yml: 'yaml'
+          ts: 'typescript', tsx: 'typescript',
+          js: 'javascript', jsx: 'javascript',
+          py: 'python', go: 'go', rs: 'rust',
+          java: 'java', cpp: 'cpp', c: 'c',
+          md: 'markdown', json: 'json',
+          yaml: 'yaml', yml: 'yaml',
+          css: 'css', html: 'html', sql: 'sql',
         };
         setLanguage(langMap[ext] || 'plaintext');
       } catch (error) {
@@ -59,8 +52,11 @@ export function DiffViewer() {
 
   if (!prData || !selectedFile) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888' }}>
-        Select a file to view diff
+      <div className="flex items-center justify-center h-full text-text-muted text-sm">
+        <div className="text-center">
+          <div className="text-2xl mb-2 opacity-30">&#8644;</div>
+          <div>Select a file to view diff</div>
+        </div>
       </div>
     );
   }
@@ -74,7 +70,12 @@ export function DiffViewer() {
       options={{
         readOnly: true,
         minimap: { enabled: false },
-        fontSize: 13
+        fontSize: 13,
+        lineHeight: 20,
+        padding: { top: 12 },
+        scrollBeyondLastLine: false,
+        renderSideBySide: true,
+        stickyScroll: { enabled: false },
       }}
     />
   );

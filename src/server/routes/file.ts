@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { fetchFileContent } from '../services/github.js';
+import { getRepoRoot } from '../services/cache.js';
 
 export const fileRouter = Router();
 
@@ -19,7 +20,7 @@ fileRouter.get('/file-content', async (req: Request, res: Response) => {
   }
 
   try {
-    const content = await fetchFileContent(owner, repoName, ref, path);
+    const content = await fetchFileContent(owner, repoName, ref, path, getRepoRoot());
     res.json(content);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

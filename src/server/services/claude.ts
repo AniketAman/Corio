@@ -1,5 +1,15 @@
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import { PRMetadata, ReviewMode } from '../types.js';
+import { getPresetById, Preset } from './presets.js';
+
+const activeProcesses = new Set<ChildProcess>();
+
+export function killAllChildren(): void {
+  for (const child of activeProcesses) {
+    child.kill('SIGTERM');
+  }
+  activeProcesses.clear();
+}
 
 export interface ClaudeStreamOptions {
   onToken: (token: string) => void;
@@ -8,19 +18,27 @@ export interface ClaudeStreamOptions {
   onComplete: () => void;
 }
 
-export function streamReviewExplanation(
+export async function streamReviewExplanation(
   pr: PRMetadata,
   diff: string,
   mode: ReviewMode,
   modelId: string,
+  presetId: string,
   options: ClaudeStreamOptions
-): void {
-  const prompt = buildReviewPrompt(pr, diff, mode);
+): Promise<void> {
+  const preset = await getPresetById(presetId);
+  if (!preset) {
+    options.onError(new Error(`Preset not found: ${presetId}`));
+    return;
+  }
+
+  const prompt = buildReviewPrompt(pr, diff, mode, preset);
 
   const args = [
     '-p',
     '--model', modelId,
-    '--output-format', 'stream-json'
+    '--output-format', 'stream-json',
+    '--verbose'
   ];
 
   if (mode.type === 'repo') {
@@ -31,6 +49,8 @@ export function streamReviewExplanation(
     cwd: mode.type === 'repo' ? mode.repoRoot : process.cwd(),
     stdio: ['pipe', 'pipe', 'pipe']
   });
+
+  activeProcesses.add(claude);
 
   claude.stdin.write(prompt);
   claude.stdin.end();
@@ -48,12 +68,21 @@ export function streamReviewExplanation(
       try {
         const data = JSON.parse(line);
 
-        // Extract session ID from metadata
-        if (data.session_id) {
+        // Extract session ID from init message
+        if (data.type === 'system' && data.subtype === 'init' && data.session_id) {
           options.onSessionId?.(data.session_id);
         }
 
-        // Extract text content
+        // Extract text from assistant messages
+        if (data.type === 'assistant' && data.message?.content) {
+          for (const block of data.message.content) {
+            if (block.type === 'text' && block.text) {
+              options.onToken(block.text);
+            }
+          }
+        }
+
+        // Also handle content_block_delta (streaming chunks)
         if (data.type === 'content_block_delta' && data.delta?.text) {
           options.onToken(data.delta.text);
         }
@@ -63,15 +92,18 @@ export function streamReviewExplanation(
     }
   });
 
+  let stderrOutput = '';
   claude.stderr.on('data', (chunk) => {
+    stderrOutput += chunk.toString();
     console.error('Claude stderr:', chunk.toString());
   });
 
   claude.on('close', (code) => {
+    activeProcesses.delete(claude);
     if (code === 0) {
       options.onComplete();
     } else {
-      options.onError(new Error(`Claude exited with code ${code}`));
+      options.onError(new Error(`Claude exited with code ${code}. ${stderrOutput}`));
     }
   });
 
@@ -91,6 +123,7 @@ export function streamChatResponse(
     '-p',
     '--model', modelId,
     '--output-format', 'stream-json',
+    '--verbose',
     '--resume', sessionId
   ];
 
@@ -102,6 +135,8 @@ export function streamChatResponse(
     cwd: mode.type === 'repo' ? mode.repoRoot : process.cwd(),
     stdio: ['pipe', 'pipe', 'pipe']
   });
+
+  activeProcesses.add(claude);
 
   claude.stdin.write(question);
   claude.stdin.end();
@@ -119,6 +154,16 @@ export function streamChatResponse(
       try {
         const data = JSON.parse(line);
 
+        // Extract text from assistant messages
+        if (data.type === 'assistant' && data.message?.content) {
+          for (const block of data.message.content) {
+            if (block.type === 'text' && block.text) {
+              options.onToken(block.text);
+            }
+          }
+        }
+
+        // Also handle content_block_delta (streaming chunks)
         if (data.type === 'content_block_delta' && data.delta?.text) {
           options.onToken(data.delta.text);
         }
@@ -133,6 +178,7 @@ export function streamChatResponse(
   });
 
   claude.on('close', (code) => {
+    activeProcesses.delete(claude);
     if (code === 0) {
       options.onComplete();
     } else {
@@ -148,21 +194,39 @@ export function streamChatResponse(
 function buildReviewPrompt(
   pr: PRMetadata,
   diff: string,
-  mode: ReviewMode
+  mode: ReviewMode,
+  preset: Preset
 ): string {
-  const basePrompt = `You are reviewing a GitHub PR${mode.type === 'repo' ? '. You have access to the full codebase via Read, Glob, and Grep tools' : ''}.
+  const template = preset.template;
 
-PR: ${pr.title} by ${pr.author}
-Description: ${pr.body}
+  let fileInstructions: string;
+  if (preset.id === 'explain') {
+    fileInstructions = pr.files.map(f => `### FILE: ${f.path}
+Explain this file's role in the change. What concepts does it introduce? How does it relate to other files in the PR?`).join('\n\n');
+  } else if (preset.parseFileMarkers) {
+    fileInstructions = pr.files.map(f => `### FILE: ${f.path}
+Explain what changed in this file and why. Note any issues, edge cases, or suggestions.`).join('\n\n');
+  } else {
+    fileInstructions = '';
+  }
 
-Diff:
-${diff}
+  const repoContext = mode.type === 'repo'
+    ? '. You have access to the full codebase via Read, Glob, and Grep tools'
+    : '';
 
-Provide:
-1. A high-level summary of what this PR does and why
-2. For each changed file, explain what changed and why
-3. Call out any potential issues, edge cases, or improvements
-${mode.type === 'repo' ? '\nUse the codebase tools to read related files (imports, tests, types) for context.' : ''}`;
+  const repoToolHint = mode.type === 'repo'
+    ? 'Use the codebase tools to read related files (imports, tests, types) for deeper context.'
+    : '';
 
-  return basePrompt;
+  return template
+    .replace('{{repoContext}}', repoContext)
+    .replace('{{title}}', pr.title)
+    .replace('{{author}}', pr.author)
+    .replace('{{fileCount}}', String(pr.files.length))
+    .replace('{{additions}}', String(pr.additions))
+    .replace('{{deletions}}', String(pr.deletions))
+    .replace('{{body}}', pr.body || '(No description provided)')
+    .replace('{{diff}}', diff)
+    .replace('{{fileInstructions}}', fileInstructions)
+    .replace('{{repoToolHint}}', repoToolHint);
 }

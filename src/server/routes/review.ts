@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { fetchPRMetadata, fetchPRDiff, fetchFileContentBatch } from '../services/github.js';
 import { streamReviewExplanation } from '../services/claude.js';
 import { detectRepoMode } from '../services/repo-detect.js';
+import { setRepoRoot } from '../services/cache.js';
+import { getPresetById } from '../services/presets.js';
 
 export const reviewRouter = Router();
 
@@ -30,7 +32,7 @@ function validatePRUrl(prUrl: string): { owner: string; repo: string; number: nu
 }
 
 reviewRouter.post('/review', async (req: Request, res: Response) => {
-  const { prUrl, modelId = 'claude-opus-4-6-20250925' } = req.body;
+  const { prUrl, modelId = 'opus', presetId = 'review' } = req.body;
 
   // Validate URL
   const parsed = validatePRUrl(prUrl);
@@ -54,6 +56,7 @@ reviewRouter.post('/review', async (req: Request, res: Response) => {
   try {
     // Detect repo mode
     const mode = await detectRepoMode(owner, repo);
+    setRepoRoot(mode.repoRoot);
 
     // Fetch PR metadata
     const pr = await fetchPRMetadata(owner, repo, number);
@@ -78,10 +81,14 @@ reviewRouter.post('/review', async (req: Request, res: Response) => {
       }
     );
 
+    // Resolve preset for parseFileMarkers flag
+    const preset = await getPresetById(presetId);
+    const parseFileMarkers = preset?.parseFileMarkers ?? true;
+
     // Stream Claude explanation
     let sessionId: string | undefined;
 
-    streamReviewExplanation(pr, diff, mode, modelId, {
+    streamReviewExplanation(pr, diff, mode, modelId, presetId, {
       onToken: (token) => {
         sendEvent('explanation', { chunk: token });
       },
@@ -93,7 +100,7 @@ reviewRouter.post('/review', async (req: Request, res: Response) => {
         res.end();
       },
       onComplete: () => {
-        sendEvent('done', { sessionId, mode: mode.type });
+        sendEvent('done', { sessionId, mode: mode.type, parseFileMarkers });
         res.end();
       }
     });

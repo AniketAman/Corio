@@ -1,119 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useReview } from '../context/ReviewContext';
+import { SettingsModal } from './SettingsModal';
+import { PresetDropdown } from './PresetDropdown';
+import { Button } from './ui/button';
 
 export function PRInput() {
   const [prUrl, setPrUrl] = useState('');
-  const { setLoading, setPrData, setExplanation, setMode, setSessionId } = useReview();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { loading, triggerReview } = useReview();
+  const autoTriggered = useRef(false);
 
-  // Read query params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const prParam = params.get('pr');
-    if (prParam) {
+    if (prParam && !autoTriggered.current) {
+      autoTriggered.current = true;
       setPrUrl(prParam);
+      triggerReview(prParam);
     }
-  }, []);
+  }, [triggerReview]);
 
-  const handleReview = async () => {
-    if (!prUrl.trim()) return;
-
-    setLoading(true);
-    setPrData(null);
-    setExplanation('');
-
-    // Read model from query params
-    const params = new URLSearchParams(window.location.search);
-    const modelId = params.get('model') || undefined;
-
-    try {
-      const response = await fetch('/api/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prUrl, modelId })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch review');
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let explanationText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-
-          const eventMatch = line.match(/^event: (.+)$/m);
-          const dataMatch = line.match(/^data: (.+)$/m);
-
-          if (eventMatch && dataMatch) {
-            const event = eventMatch[1];
-            const data = JSON.parse(dataMatch[1]);
-
-            if (event === 'pr-metadata') {
-              setPrData(data.pr);
-              setMode(data.mode);
-            } else if (event === 'explanation') {
-              explanationText += data.chunk;
-              setExplanation(explanationText);
-            } else if (event === 'done') {
-              if (data.sessionId) {
-                setSessionId(data.sessionId);
-              }
-            } else if (event === 'error') {
-              console.error('Review error:', data.message);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Review failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleReview = () => triggerReview(prUrl);
 
   return (
-    <div style={{ display: 'flex', gap: '8px', padding: '12px', borderBottom: '1px solid #444' }}>
-      <input
-        type="text"
-        value={prUrl}
-        onChange={(e) => setPrUrl(e.target.value)}
-        placeholder="Enter PR URL or org/repo#123"
-        style={{
-          flex: 1,
-          padding: '8px',
-          background: '#2b2b2b',
-          color: '#fff',
-          border: '1px solid #444',
-          borderRadius: '4px'
-        }}
-        onKeyDown={(e) => e.key === 'Enter' && handleReview()}
-      />
-      <button
-        onClick={handleReview}
-        style={{
-          padding: '8px 16px',
-          background: '#0078d4',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}
-      >
-        Review
-      </button>
+    <div className="px-4 py-3 border-b border-border bg-surface">
+      <div className="flex items-center gap-3">
+        <PresetDropdown />
+
+        <input
+          type="text"
+          value={prUrl}
+          onChange={(e) => setPrUrl(e.target.value)}
+          placeholder="Enter PR URL or org/repo#123"
+          className="flex-1 h-9 px-3 bg-surface-elevated text-text-primary border border-border rounded-[var(--radius-sm)] text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+          onKeyDown={(e) => e.key === 'Enter' && handleReview()}
+        />
+
+        <Button
+          onClick={handleReview}
+          disabled={loading}
+          variant="default"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Reviewing...
+            </span>
+          ) : (
+            'Review'
+          )}
+        </Button>
+
+        <Button
+          onClick={() => setSettingsOpen(true)}
+          variant="ghost"
+          size="icon"
+          title="Settings"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6.5 1.75a.75.75 0 011.5 0V3h-1.5V1.75zM8 13h-1.5v1.25a.75.75 0 001.5 0V13zM14.25 7.5a.75.75 0 010 1.5H13v-1.5h1.25zM3 8H1.75a.75.75 0 000 1.5H3V8zM8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z" fill="currentColor"/>
+            <path d="M8 4a4 4 0 100 8 4 4 0 000-8zM5.5 8a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0z" fill="currentColor"/>
+          </svg>
+        </Button>
+      </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

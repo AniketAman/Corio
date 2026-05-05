@@ -1,43 +1,53 @@
 import { useReview } from '../context/ReviewContext';
+import { cn } from '../lib/utils';
 
 export function FileTree() {
   const { prData, selectedFile, setSelectedFile } = useReview();
 
   if (!prData) {
     return (
-      <div style={{ padding: '16px', color: '#888' }}>
+      <div className="p-4 text-text-muted text-sm">
         No PR loaded
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '8px', overflowY: 'auto' }}>
-      <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
-        Changed Files ({prData.files.length})
+    <div className="p-2 overflow-y-auto h-full">
+      <div className="text-[11px] uppercase tracking-wider text-text-muted font-medium px-2 py-1 mb-1">
+        Changed ({prData.files.length})
       </div>
-      {prData.files.map((file) => (
-        <div
-          key={file.path}
-          onClick={() => setSelectedFile(file.path)}
-          style={{
-            padding: '8px',
-            marginBottom: '4px',
-            background: selectedFile === file.path ? '#37373d' : 'transparent',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: selectedFile === file.path ? '#fff' : '#ccc'
-          }}
-        >
-          <div style={{ marginBottom: '4px' }}>{file.path.split('/').pop()}</div>
-          <div style={{ fontSize: '11px', color: '#888' }}>
-            <span style={{ color: '#4ec9b0' }}>+{file.additions}</span>
-            {' '}
-            <span style={{ color: '#f48771' }}>-{file.deletions}</span>
-          </div>
-        </div>
-      ))}
+      {prData.files.map((file) => {
+        const isSelected = selectedFile === file.path;
+        const fileName = file.path.split('/').pop();
+        const dirPath = file.path.split('/').slice(0, -1).join('/');
+
+        return (
+          <button
+            key={file.path}
+            onClick={() => setSelectedFile(file.path)}
+            className={cn(
+              'w-full text-left px-2.5 py-2 mb-0.5 rounded-[var(--radius-sm)] cursor-pointer transition-all border-none',
+              isSelected
+                ? 'bg-accent-muted text-text-primary'
+                : 'bg-transparent text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-medium truncate">{fileName}</span>
+              <div className="flex gap-1.5 text-[11px] shrink-0 ml-2">
+                <span className="text-success">+{file.additions}</span>
+                <span className="text-danger">-{file.deletions}</span>
+              </div>
+            </div>
+            {dirPath && (
+              <div className="text-[11px] text-text-muted mt-0.5 truncate font-mono">
+                {dirPath}
+              </div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
