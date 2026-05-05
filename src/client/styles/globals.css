@@ -81,6 +81,34 @@
   }
 }
 
+/* Monaco editor annotation decorations */
+.annotation-highlight {
+  background: rgba(139, 92, 246, 0.08) !important;
+  border-left: 3px solid #8b5cf6 !important;
+}
+
+.annotation-glyph {
+  background: #8b5cf6;
+  border-radius: 50%;
+  width: 8px !important;
+  height: 8px !important;
+  margin-left: 4px;
+  margin-top: 6px;
+}
+
+.annotation-flash {
+  animation: annotation-flash-anim 2s ease-out;
+}
+
+@keyframes annotation-flash-anim {
+  0% {
+    background-color: rgba(139, 92, 246, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 @layer components {
   .prose-review {
     font-size: 13px;

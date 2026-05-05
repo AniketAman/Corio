@@ -61,6 +61,9 @@ interface ReviewContextType {
   activePresetId: string;
   setActivePresetId: (id: string) => void;
   presets: Preset[];
+  annotations: Record<string, number[]>;
+  highlightedAnnotation: { file: string; line: number } | null;
+  scrollToAnnotation: (file: string, line: number) => void;
 }
 
 const ReviewContext = createContext<ReviewContextType | undefined>(undefined);
@@ -78,6 +81,12 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const [currentPrUrl, setCurrentPrUrl] = useState<string | null>(null);
   const [activePresetId, setActivePresetId] = useState('review');
   const [presets, setPresets] = useState<Preset[]>([]);
+  const [annotations, setAnnotations] = useState<Record<string, number[]>>({});
+  const [highlightedAnnotation, setHighlightedAnnotation] = useState<{ file: string; line: number } | null>(null);
+
+  const scrollToAnnotation = useCallback((file: string, line: number) => {
+    setHighlightedAnnotation({ file, line });
+  }, []);
 
   useEffect(() => {
     fetch('/api/presets')
@@ -97,6 +106,8 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     setPrData(null);
     setExplanation('');
     setFileExplanations({});
+    setAnnotations({});
+    setHighlightedAnnotation(null);
     setError(null);
     setCurrentPrUrl(url);
     setChatHistory([]);
@@ -168,6 +179,22 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
           }
         }
       }
+
+      // Parse annotations from completed explanation text
+      const lineRefRegex = /(?:`|^|\s)([\w./\-]+\.\w+):(\d+)/gm;
+      const annotationMap: Record<string, number[]> = {};
+      let refMatch;
+      while ((refMatch = lineRefRegex.exec(explanationText)) !== null) {
+        const filePath = refMatch[1];
+        const lineNum = parseInt(refMatch[2], 10);
+        if (!annotationMap[filePath]) {
+          annotationMap[filePath] = [];
+        }
+        if (!annotationMap[filePath].includes(lineNum)) {
+          annotationMap[filePath].push(lineNum);
+        }
+      }
+      setAnnotations(annotationMap);
     } catch (error: any) {
       setError(error.message || 'Review failed');
     } finally {
@@ -202,6 +229,9 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         activePresetId,
         setActivePresetId,
         presets,
+        annotations,
+        highlightedAnnotation,
+        scrollToAnnotation,
       }}
     >
       {children}

@@ -7,10 +7,11 @@ import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
 
 export function ExplanationPanel() {
-  const { explanation, fileExplanations, selectedFile, loading, activePresetId } = useReview();
+  const { explanation, fileExplanations, selectedFile, loading, activePresetId, highlightedAnnotation } = useReview();
   const [viewMode, setViewMode] = useState<'file' | 'full'>('file');
   const [chatOpen, setChatOpen] = useState(false);
   const fileRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const overallMatch = explanation.match(/^([\s\S]*?)(?=### FILE:|$)/);
   const overallSummary = overallMatch?.[1]?.trim() || '';
@@ -28,10 +29,39 @@ export function ExplanationPanel() {
     }
   }, [selectedFile]);
 
+  // Scroll to the referenced annotation in the explanation text
+  useEffect(() => {
+    if (!highlightedAnnotation || !contentRef.current) return;
+
+    const { file, line } = highlightedAnnotation;
+    const searchText = `${file}:${line}`;
+
+    // Find the text node containing the file:line reference
+    const walker = document.createTreeWalker(
+      contentRef.current,
+      NodeFilter.SHOW_TEXT,
+      null,
+    );
+
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      if (node.textContent && node.textContent.includes(searchText)) {
+        const parentEl = node.parentElement;
+        if (parentEl) {
+          parentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Flash highlight effect
+          parentEl.classList.add('annotation-flash');
+          setTimeout(() => parentEl.classList.remove('annotation-flash'), 2000);
+        }
+        break;
+      }
+    }
+  }, [highlightedAnnotation]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Explanation content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={contentRef} className="flex-1 overflow-y-auto p-4">
         {/* View toggle - only show when we have file markers */}
         {hasFileMarkers && (
           <div className="flex gap-1 mb-4">

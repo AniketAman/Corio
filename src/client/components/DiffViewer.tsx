@@ -1,12 +1,16 @@
-import { DiffEditor } from '@monaco-editor/react';
+import { DiffEditor, DiffOnMount } from '@monaco-editor/react';
 import { useReview } from '../context/ReviewContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import type { editor } from 'monaco-editor';
 
 export function DiffViewer() {
-  const { prData, selectedFile } = useReview();
+  const { prData, selectedFile, annotations, scrollToAnnotation } = useReview();
   const [original, setOriginal] = useState('');
   const [modified, setModified] = useState('');
   const [language, setLanguage] = useState('plaintext');
+
+  const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const decorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
 
   useEffect(() => {
     if (!prData || !selectedFile) {
@@ -50,6 +54,54 @@ export function DiffViewer() {
     fetchContents();
   }, [prData, selectedFile]);
 
+  const handleMount: DiffOnMount = (editor) => {
+    editorRef.current = editor;
+
+    // Listen for clicks on the modified editor
+    const modifiedEditor = editor.getModifiedEditor();
+    modifiedEditor.onMouseDown((e) => {
+      if (!selectedFile) return;
+      const lineNumber = e.target.position?.lineNumber;
+      if (!lineNumber) return;
+
+      const lines = annotations[selectedFile] || [];
+      if (lines.includes(lineNumber)) {
+        scrollToAnnotation(selectedFile, lineNumber);
+      }
+    });
+  };
+
+  // Effect to update decorations when file/annotations change
+  useEffect(() => {
+    if (!editorRef.current || !selectedFile) return;
+
+    const modifiedEditor = editorRef.current.getModifiedEditor();
+    const lines = annotations[selectedFile] || [];
+
+    // Clear previous decorations
+    if (decorationsRef.current) {
+      decorationsRef.current.clear();
+    }
+
+    if (lines.length === 0) return;
+
+    const decorations: editor.IModelDeltaDecoration[] = lines.map(line => ({
+      range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 },
+      options: {
+        isWholeLine: true,
+        className: 'annotation-highlight',
+        glyphMarginClassName: 'annotation-glyph',
+        glyphMarginHoverMessage: { value: 'Referenced in review' },
+        overviewRuler: {
+          color: '#8b5cf6',
+          position: 1,
+        },
+      },
+    }));
+
+    decorationsRef.current = modifiedEditor.createDecorationsCollection(decorations);
+  }, [selectedFile, annotations]);
+
   if (!prData || !selectedFile) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted text-sm">
@@ -67,6 +119,7 @@ export function DiffViewer() {
       modified={modified}
       language={language}
       theme="vs-dark"
+      onMount={handleMount}
       options={{
         readOnly: true,
         minimap: { enabled: false },
@@ -76,6 +129,7 @@ export function DiffViewer() {
         scrollBeyondLastLine: false,
         renderSideBySide: true,
         stickyScroll: { enabled: false },
+        glyphMargin: true,
       }}
     />
   );
