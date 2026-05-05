@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useReview } from '../context/ReviewContext';
 import { ChatPanel } from './ChatPanel';
 import { StrictReviewView } from './review/StrictReviewView';
+import { ReviewPresetView } from './review/ReviewPresetView';
+import { ExplainPresetView } from './review/ExplainPresetView';
+import { SecurityPresetView } from './review/SecurityPresetView';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from './ui/collapsible';
 import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
@@ -12,12 +15,6 @@ export function ExplanationPanel() {
   const [chatOpen, setChatOpen] = useState(false);
   const fileRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-
-  const overallMatch = explanation.match(/^([\s\S]*?)(?=### FILE:|$)/);
-  const overallSummary = overallMatch?.[1]?.trim() || '';
-
-  const issuesMatch = explanation.match(/### Potential Issues\n([\s\S]*?)$/);
-  const potentialIssues = issuesMatch?.[1]?.trim() || '';
 
   const fileExplanation = selectedFile ? fileExplanations[selectedFile] : null;
   const showFileView = viewMode === 'file' && selectedFile && fileExplanation;
@@ -62,8 +59,8 @@ export function ExplanationPanel() {
     <div className="flex flex-col h-full">
       {/* Explanation content */}
       <div ref={contentRef} className="flex-1 overflow-y-auto p-4">
-        {/* View toggle - only show when we have file markers */}
-        {hasFileMarkers && (
+        {/* View toggle - only show for custom presets with file markers */}
+        {hasFileMarkers && !['strict', 'review', 'explain', 'security'].includes(activePresetId) && (
           <div className="flex gap-1 mb-4">
             <button
               onClick={() => setViewMode('file')}
@@ -96,30 +93,21 @@ export function ExplanationPanel() {
           </div>
         )}
 
-        {/* Strict preset view */}
+        {/* Preset-specific rich views */}
         {activePresetId === 'strict' && explanation ? (
           <StrictReviewView explanation={explanation} />
+        ) : activePresetId === 'review' && explanation ? (
+          <ReviewPresetView explanation={explanation} fileExplanations={fileExplanations} selectedFile={selectedFile} />
+        ) : activePresetId === 'explain' && explanation ? (
+          <ExplainPresetView explanation={explanation} fileExplanations={fileExplanations} selectedFile={selectedFile} />
+        ) : activePresetId === 'security' && explanation ? (
+          <SecurityPresetView explanation={explanation} />
         ) : showFileView ? (
           <div ref={fileRef} className="prose-review">
             <div className="text-xs font-mono text-accent mb-3 px-2 py-1 bg-accent-subtle rounded-[var(--radius-sm)]">
               {selectedFile}
             </div>
             <ReactMarkdown>{fileExplanation}</ReactMarkdown>
-          </div>
-        ) : viewMode === 'file' && !selectedFile && overallSummary ? (
-          <div className="prose-review">
-            <h4 className="text-sm font-semibold text-text-primary mb-3">Overall Summary</h4>
-            <ReactMarkdown>{overallSummary}</ReactMarkdown>
-            {potentialIssues && (
-              <>
-                <h4 className="text-sm font-semibold text-warning mt-5 mb-3">Potential Issues</h4>
-                <ReactMarkdown>{potentialIssues}</ReactMarkdown>
-              </>
-            )}
-          </div>
-        ) : viewMode === 'file' && selectedFile && !fileExplanation && explanation ? (
-          <div className="text-sm text-text-muted">
-            No specific explanation for this file yet.
           </div>
         ) : explanation ? (
           <div className="prose-review">
