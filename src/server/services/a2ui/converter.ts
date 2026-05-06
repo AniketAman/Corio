@@ -16,9 +16,8 @@ export async function convertToA2UI(reviewText: string, presetId: string): Promi
 
   const args = [
     '-p',
-    '--model', 'claude-haiku-4-5-20251001',
-    '--output-format', 'json',
-    '--verbose'
+    '--model', 'haiku',
+    '--output-format', 'json'
   ];
 
   const claude = spawn('claude', args, {
