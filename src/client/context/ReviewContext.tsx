@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { tauriApi, PRMetadata, Preset } from '../hooks/useTauriApi';
 import { RepoPathPicker } from '../components/RepoPathPicker';
-import { useTabs, ChatMessage } from './TabsContext';
+import { useTabs, ChatMessage, PendingComment, PendingReview } from './TabsContext';
 
 export type { ChatMessage };
 
@@ -40,6 +40,14 @@ interface ReviewContextType {
   a2uiError: string | null;
   isCachedReview: boolean;
   forceReReview: () => void;
+  pendingReview: PendingReview;
+  addPendingComment: (comment: Omit<PendingComment, 'id'>) => void;
+  removePendingComment: (id: string) => void;
+  editPendingComment: (id: string, body: string) => void;
+  submitReview: (verdict: string, summaryBody?: string) => Promise<void>;
+  clearPendingReview: () => void;
+  reviewSubmitting: boolean;
+  reviewSubmitError: string | null;
 }
 
 const ReviewContext = createContext<ReviewContextType | undefined>(undefined);
@@ -376,6 +384,78 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     triggerReview(url);
   }, [activeTabId, activeTab.prUrl, updateTab, triggerReview]);
 
+  // --- Pending review actions ---
+  const pendingReview = activeTab.pendingReview;
+
+  const addPendingComment = useCallback((comment: Omit<PendingComment, 'id'>) => {
+    const newComment: PendingComment = { ...comment, id: crypto.randomUUID() };
+    const current = activeTab.pendingReview;
+    updateTab(activeTabId, {
+      pendingReview: { comments: [...current.comments, newComment] },
+    });
+  }, [activeTabId, activeTab.pendingReview, updateTab]);
+
+  const removePendingComment = useCallback((id: string) => {
+    const current = activeTab.pendingReview;
+    updateTab(activeTabId, {
+      pendingReview: { comments: current.comments.filter(c => c.id !== id) },
+    });
+  }, [activeTabId, activeTab.pendingReview, updateTab]);
+
+  const editPendingComment = useCallback((id: string, body: string) => {
+    const current = activeTab.pendingReview;
+    updateTab(activeTabId, {
+      pendingReview: {
+        comments: current.comments.map(c => c.id === id ? { ...c, body } : c),
+      },
+    });
+  }, [activeTabId, activeTab.pendingReview, updateTab]);
+
+  const clearPendingReview = useCallback(() => {
+    updateTab(activeTabId, { pendingReview: { comments: [] } });
+  }, [activeTabId, updateTab]);
+
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitError, setReviewSubmitError] = useState<string | null>(null);
+
+  const submitReviewAction = useCallback(async (verdict: string, summaryBody?: string) => {
+    const pr = activeTab.prData;
+    if (!pr) return;
+
+    setReviewSubmitting(true);
+    setReviewSubmitError(null);
+
+    const pending = activeTab.pendingReview;
+    const inlineComments = pending.comments
+      .filter(c => c.type === 'inline' && c.path && c.line)
+      .map(c => ({ path: c.path!, line: c.line!, body: c.body }));
+
+    const generalComments = pending.comments.filter(c => c.type === 'general');
+    const bodyParts: string[] = [];
+    if (summaryBody) bodyParts.push(summaryBody);
+    if (generalComments.length > 0) {
+      bodyParts.push(...generalComments.map(c => c.body));
+    }
+    const fullBody = bodyParts.join('\n\n---\n\n') || undefined;
+
+    try {
+      await tauriApi.submitReview(
+        pr.owner,
+        pr.repo,
+        pr.number,
+        pr.headSha,
+        verdict,
+        fullBody,
+        inlineComments,
+      );
+      clearPendingReview();
+    } catch (err: any) {
+      setReviewSubmitError(err.message || err.toString());
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }, [activeTab.prData, activeTab.pendingReview, clearPendingReview]);
+
   return (
     <ReviewContext.Provider
       value={{
@@ -412,6 +492,14 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         a2uiError,
         isCachedReview,
         forceReReview,
+        pendingReview,
+        addPendingComment,
+        removePendingComment,
+        editPendingComment,
+        submitReview: submitReviewAction,
+        clearPendingReview,
+        reviewSubmitting,
+        reviewSubmitError,
       }}
     >
       {children}
