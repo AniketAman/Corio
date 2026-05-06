@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 export function PRInput() {
   const [prUrl, setPrUrl] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { loading, triggerReview } = useReview();
+  const { loading, triggerReview, isCachedReview, forceReReview, currentPrUrl } = useReview();
   const autoTriggered = useRef(false);
 
   useEffect(() => {
@@ -50,6 +50,17 @@ export function PRInput() {
             'Review'
           )}
         </Button>
+
+        {isCachedReview && (
+          <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-medium">
+            Cached
+          </span>
+        )}
+        {currentPrUrl && !loading && (
+          <button onClick={forceReReview} className="text-[11px] text-accent hover:text-accent-hover transition-colors">
+            Re-review
+          </button>
+        )}
 
         <Button
           onClick={() => setSettingsOpen(true)}

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { tauriApi, PRMetadata, Preset } from '../hooks/useTauriApi';
+import { RepoPathPicker } from '../components/RepoPathPicker';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -67,6 +68,12 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const [a2uiLoading, setA2uiLoading] = useState(false);
   const [a2uiError, setA2uiError] = useState<string | null>(null);
   const [isCachedReview, setIsCachedReview] = useState(false);
+
+  const [repoPickerState, setRepoPickerState] = useState<{
+    owner: string;
+    repo: string;
+    resolve: (path: string | null) => void;
+  } | null>(null);
 
   const worktreePathRef = useRef<string | null>(null);
   const repoPathRef = useRef<string | null>(null);
@@ -208,8 +215,16 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       const diff = await tauriApi.fetchPRDiff(pr.owner, pr.repo, pr.number);
 
       // 4. Check repo registry and create worktree if available
-      const repoPath = await tauriApi.getRepoPath(pr.owner, pr.repo);
+      let repoPath = await tauriApi.getRepoPath(pr.owner, pr.repo);
       let worktreePath: string | null = null;
+
+      if (!repoPath) {
+        // Show picker dialog and await user's choice
+        repoPath = await new Promise<string | null>((resolve) => {
+          setRepoPickerState({ owner: pr.owner, repo: pr.repo, resolve });
+        });
+        setRepoPickerState(null);
+      }
 
       if (repoPath) {
         setMode('repo');
@@ -345,6 +360,14 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {repoPickerState && (
+        <RepoPathPicker
+          owner={repoPickerState.owner}
+          repo={repoPickerState.repo}
+          onSelected={(path) => repoPickerState.resolve(path)}
+          onSkip={() => repoPickerState.resolve(null)}
+        />
+      )}
     </ReviewContext.Provider>
   );
 }
