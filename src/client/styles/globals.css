@@ -34,26 +34,26 @@
 
 :root.light {
   --color-background: #ffffff;
-  --color-surface: #f8f8fa;
-  --color-surface-elevated: #f0f0f3;
-  --color-surface-hover: #e8e8eb;
-  --color-border: #d4d4d8;
-  --color-border-subtle: #e4e4e7;
-  --color-text-primary: #18181b;
-  --color-text-secondary: #52525b;
-  --color-text-muted: #a1a1aa;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f9fafb;
+  --color-surface-hover: #f3f4f6;
+  --color-border: #e5e7eb;
+  --color-border-subtle: #f3f4f6;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
   --color-accent: #7c3aed;
   --color-accent-hover: #6d28d9;
-  --color-accent-muted: #7c3aed20;
-  --color-accent-subtle: #7c3aed10;
+  --color-accent-muted: #7c3aed15;
+  --color-accent-subtle: #7c3aed08;
   --color-success: #059669;
-  --color-success-muted: #05966920;
+  --color-success-muted: #05966915;
   --color-danger: #dc2626;
-  --color-danger-muted: #dc262620;
+  --color-danger-muted: #dc262615;
   --color-warning: #d97706;
-  --color-warning-muted: #d9770620;
+  --color-warning-muted: #d9770615;
   --color-info: #4f46e5;
-  --color-info-muted: #4f46e520;
+  --color-info-muted: #4f46e515;
 }
 
 @layer base {
@@ -106,10 +106,10 @@
 }
 
 :root.light ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: #e5e7eb;
 }
 :root.light ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  background: #d1d5db;
 }
 
 /* Monaco editor annotation decorations */
