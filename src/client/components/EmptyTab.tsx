@@ -16,6 +16,12 @@ export function EmptyTab() {
   return (
     <div className="flex-1 flex items-center justify-center bg-background">
       <div className="w-full max-w-xl px-6">
+        <img
+          src="/home-icon.png"
+          alt=""
+          className="w-70 h-70 mx-auto mb-4 select-none pointer-events-none"
+          draggable={false}
+        />
         <h2 className="text-lg font-medium text-text-primary text-center mb-6">
           Start a Code Review
         </h2>
