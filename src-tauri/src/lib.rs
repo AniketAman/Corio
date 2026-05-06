@@ -22,6 +22,9 @@ pub fn run() {
             commands::worktree::remove_worktree,
             commands::cache::get_cached_review,
             commands::cache::save_cached_review,
+            commands::presets::get_all_presets,
+            commands::presets::save_preset,
+            commands::presets::delete_preset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
