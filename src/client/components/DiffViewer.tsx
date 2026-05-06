@@ -1,10 +1,13 @@
 import { DiffEditor, DiffOnMount } from '@monaco-editor/react';
 import { useReview } from '../context/ReviewContext';
 import { useEffect, useState, useRef } from 'react';
+import { useTheme } from '../hooks/useTheme';
+import { tauriApi } from '../hooks/useTauriApi';
 import type { editor } from 'monaco-editor';
 
 export function DiffViewer() {
   const { prData, selectedFile, annotations, scrollToAnnotation } = useReview();
+  const { resolved } = useTheme();
   const [original, setOriginal] = useState('');
   const [modified, setModified] = useState('');
   const [language, setLanguage] = useState('plaintext');
@@ -20,20 +23,16 @@ export function DiffViewer() {
     }
 
     const fetchContents = async () => {
-      const repo = `${prData.owner}/${prData.repo}`;
-
       try {
-        const params = (ref: string) => new URLSearchParams({ repo, ref, path: selectedFile }).toString();
-        const [baseRes, headRes] = await Promise.all([
-          fetch(`/api/file-content?${params(prData.baseRef)}`),
-          fetch(`/api/file-content?${params(prData.headRef)}`)
+        const repoPath = await tauriApi.getRepoPath(prData.owner, prData.repo);
+
+        const [baseContent, headContent] = await Promise.all([
+          tauriApi.fetchFileContent(prData.owner, prData.repo, prData.baseRef, selectedFile, repoPath),
+          tauriApi.fetchFileContent(prData.owner, prData.repo, prData.headRef, selectedFile, repoPath),
         ]);
 
-        const baseData = await baseRes.json();
-        const headData = await headRes.json();
-
-        setOriginal(baseData.content || '');
-        setModified(headData.content || '');
+        setOriginal(baseContent || '');
+        setModified(headContent || '');
 
         const ext = selectedFile.split('.').pop()?.toLowerCase() || '';
         const langMap: Record<string, string> = {
@@ -57,7 +56,6 @@ export function DiffViewer() {
   const handleMount: DiffOnMount = (editor) => {
     editorRef.current = editor;
 
-    // Listen for clicks on the modified editor
     const modifiedEditor = editor.getModifiedEditor();
     modifiedEditor.onMouseDown((e) => {
       if (!selectedFile) return;
@@ -71,14 +69,12 @@ export function DiffViewer() {
     });
   };
 
-  // Effect to update decorations when file/annotations change
   useEffect(() => {
     if (!editorRef.current || !selectedFile) return;
 
     const modifiedEditor = editorRef.current.getModifiedEditor();
     const lines = annotations[selectedFile] || [];
 
-    // Clear previous decorations
     if (decorationsRef.current) {
       decorationsRef.current.clear();
     }
@@ -118,7 +114,7 @@ export function DiffViewer() {
       original={original}
       modified={modified}
       language={language}
-      theme="vs-dark"
+      theme={resolved === 'light' ? 'vs' : 'vs-dark'}
       onMount={handleMount}
       options={{
         readOnly: true,

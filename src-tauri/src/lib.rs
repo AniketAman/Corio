@@ -36,6 +36,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::github::fetch_pr_metadata,
             commands::github::fetch_pr_diff,
+            commands::github::fetch_file_content,
             commands::config::load_config,
             commands::config::save_config,
             commands::config::get_repo_path,

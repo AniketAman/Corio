@@ -55,6 +55,9 @@ export const tauriApi = {
   fetchPRDiff: (owner: string, repo: string, number: number) =>
     invoke<string>('fetch_pr_diff', { owner, repo, number }),
 
+  fetchFileContent: (owner: string, repo: string, fileRef: string, path: string, repoRoot: string | null) =>
+    invoke<string>('fetch_file_content', { owner, repo, fileRef, path, repoRoot }),
+
   // Config
   loadConfig: () => invoke<Config>('load_config'),
   saveConfig: (config: Config) => invoke<void>('save_config', { config }),

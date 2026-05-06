@@ -125,3 +125,40 @@ pub async fn fetch_pr_diff(owner: String, repo: String, number: u32) -> Result<S
 
     Ok(result.stdout)
 }
+
+#[tauri::command]
+pub async fn fetch_file_content(
+    owner: String,
+    repo: String,
+    file_ref: String,
+    path: String,
+    repo_root: Option<String>,
+) -> Result<String, String> {
+    // Strategy 1: git show from local repo
+    if let Some(root) = repo_root {
+        let ref_path = format!("{}:{}", file_ref, path);
+        let result = run_command("git", &["show", &ref_path], Some(&root))?;
+        if result.exit_code == 0 {
+            return Ok(result.stdout);
+        }
+        // File doesn't exist at this ref (new/deleted)
+        return Ok(String::new());
+    }
+
+    // Strategy 2: gh api
+    let api_path = format!("repos/{}/{}/contents/{}?ref={}", owner, repo, path, file_ref);
+    let result = run_command(
+        "gh",
+        &["api", &api_path, "-H", "Accept: application/vnd.github.raw+json"],
+        None,
+    )?;
+
+    if result.exit_code != 0 {
+        if result.stderr.contains("404") {
+            return Ok(String::new());
+        }
+        return Err(format!("Failed to fetch file: {}", result.stderr));
+    }
+
+    Ok(result.stdout)
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Preset } from '../hooks/useTauriApi';
 import { Button } from './ui/button';
+import { useTheme } from '../hooks/useTheme';
 import Editor from '@monaco-editor/react';
 
 interface PresetEditorProps {
@@ -10,6 +11,7 @@ interface PresetEditorProps {
 }
 
 export function PresetEditor({ preset, onSave, onCancel }: PresetEditorProps) {
+  const { resolved } = useTheme();
   const [name, setName] = useState(preset.name);
   const [description, setDescription] = useState(preset.description);
   const [template, setTemplate] = useState(preset.template);
@@ -82,7 +84,7 @@ export function PresetEditor({ preset, onSave, onCancel }: PresetEditorProps) {
           defaultLanguage="markdown"
           value={template}
           onChange={(value) => setTemplate(value || '')}
-          theme="vs-dark"
+          theme={resolved === 'light' ? 'vs' : 'vs-dark'}
           options={{
             minimap: { enabled: false },
             fontSize: 12,
