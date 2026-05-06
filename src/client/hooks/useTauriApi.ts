@@ -92,38 +92,50 @@ export const tauriApi = {
 
   // Review
   startReview: (
+    tabId: string,
     pr: PRMetadata,
     diff: string,
     model: string,
     presetId: string,
     worktreePath: string | null
-  ) => invoke<string>('start_review', { pr, diff, model, presetId, worktreePath }),
+  ) => invoke<string>('start_review', { tabId, pr, diff, model, presetId, worktreePath }),
 
   // Chat
   sendChatMessage: (
+    tabId: string,
     question: string,
     sessionId: string,
     model: string,
     worktreePath: string | null
-  ) => invoke<void>('send_chat_message', { question, sessionId, model, worktreePath }),
+  ) => invoke<void>('send_chat_message', { tabId, question, sessionId, model, worktreePath }),
 
   // A2UI
   convertToA2UI: (reviewText: string) =>
     invoke<object[]>('convert_to_a2ui', { reviewText }),
 
-  // Event listeners (return unlisten functions)
-  onReviewChunk: (callback: (chunk: string) => void): Promise<UnlistenFn> =>
-    listen<string>('review-chunk', (event) => callback(event.payload)),
+  // Tab-filtered event listeners
+  onReviewChunkForTab: (tabId: string, callback: (chunk: string) => void): Promise<UnlistenFn> =>
+    listen<{ tabId: string; text: string }>('review-chunk', (event) => {
+      if (event.payload.tabId === tabId) callback(event.payload.text);
+    }),
 
-  onReviewComplete: (callback: () => void): Promise<UnlistenFn> =>
-    listen('review-complete', () => callback()),
+  onReviewCompleteForTab: (tabId: string, callback: () => void): Promise<UnlistenFn> =>
+    listen<{ tabId: string }>('review-complete', (event) => {
+      if (event.payload.tabId === tabId) callback();
+    }),
 
-  onReviewSessionId: (callback: (sessionId: string) => void): Promise<UnlistenFn> =>
-    listen<string>('review-session-id', (event) => callback(event.payload)),
+  onReviewSessionIdForTab: (tabId: string, callback: (sessionId: string) => void): Promise<UnlistenFn> =>
+    listen<{ tabId: string; sessionId: string }>('review-session-id', (event) => {
+      if (event.payload.tabId === tabId) callback(event.payload.sessionId);
+    }),
 
-  onChatChunk: (callback: (chunk: string) => void): Promise<UnlistenFn> =>
-    listen<string>('chat-chunk', (event) => callback(event.payload)),
+  onChatChunkForTab: (tabId: string, callback: (chunk: string) => void): Promise<UnlistenFn> =>
+    listen<{ tabId: string; text: string }>('chat-chunk', (event) => {
+      if (event.payload.tabId === tabId) callback(event.payload.text);
+    }),
 
-  onChatComplete: (callback: () => void): Promise<UnlistenFn> =>
-    listen('chat-complete', () => callback()),
+  onChatCompleteForTab: (tabId: string, callback: () => void): Promise<UnlistenFn> =>
+    listen<{ tabId: string }>('chat-complete', (event) => {
+      if (event.payload.tabId === tabId) callback();
+    }),
 };

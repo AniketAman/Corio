@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ReviewProvider, useReview } from './context/ReviewContext';
-import { PRInput } from './components/PRInput';
+import { TabsProvider, useTabs } from './context/TabsContext';
+import { TabBar } from './components/TabBar';
+import { EmptyTab } from './components/EmptyTab';
 import { FileTree } from './components/FileTree';
 import { DiffViewer } from './components/DiffViewer';
 import { ExplanationPanel } from './components/ExplanationPanel';
@@ -28,41 +30,91 @@ function ErrorBanner() {
 function MainLayout() {
   const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
   const [explanationCollapsed, setExplanationCollapsed] = useState(false);
+  const { tabs, activeTabId, activeTab, addTab, closeTab, setActiveTab } = useTabs();
+
+  // Keyboard shortcuts for tab navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMeta = e.metaKey || e.ctrlKey;
+
+      if (isMeta && e.key === 't') {
+        e.preventDefault();
+        addTab();
+      }
+      if (isMeta && e.key === 'w') {
+        e.preventDefault();
+        closeTab(activeTabId);
+      }
+      if (isMeta && e.shiftKey && e.key === ']') {
+        e.preventDefault();
+        // Next tab
+        const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+        if (currentIndex < tabs.length - 1) {
+          setActiveTab(tabs[currentIndex + 1].id);
+        }
+      }
+      if (isMeta && e.shiftKey && e.key === '[') {
+        e.preventDefault();
+        // Previous tab
+        const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+        if (currentIndex > 0) {
+          setActiveTab(tabs[currentIndex - 1].id);
+        }
+      }
+      // Cmd+1 through Cmd+9
+      if (isMeta && !e.shiftKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const index = parseInt(e.key) - 1;
+        if (index < tabs.length) {
+          setActiveTab(tabs[index].id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [tabs, activeTabId, addTab, closeTab, setActiveTab]);
+
+  const showEmptyTab = activeTab && activeTab.prData === null && !activeTab.loading;
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <PRInput />
+      <TabBar />
       <ErrorBanner />
 
-      <div className="flex-1 flex overflow-hidden">
-        <ResizablePanel
-          defaultWidth={240}
-          minWidth={160}
-          maxWidth={500}
-          side="left"
-          collapsed={fileTreeCollapsed}
-          onCollapse={() => setFileTreeCollapsed(c => !c)}
-          label="Files"
-        >
-          <FileTree />
-        </ResizablePanel>
+      {showEmptyTab ? (
+        <EmptyTab />
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          <ResizablePanel
+            defaultWidth={240}
+            minWidth={160}
+            maxWidth={500}
+            side="left"
+            collapsed={fileTreeCollapsed}
+            onCollapse={() => setFileTreeCollapsed(c => !c)}
+            label="Files"
+          >
+            <FileTree />
+          </ResizablePanel>
 
-        <div className="flex-1 bg-background overflow-hidden">
-          <DiffViewer />
+          <div className="flex-1 bg-background overflow-hidden">
+            <DiffViewer />
+          </div>
+
+          <ResizablePanel
+            defaultWidth={400}
+            minWidth={280}
+            maxWidth={700}
+            side="right"
+            collapsed={explanationCollapsed}
+            onCollapse={() => setExplanationCollapsed(c => !c)}
+            label="AI Review"
+          >
+            <ExplanationPanel />
+          </ResizablePanel>
         </div>
-
-        <ResizablePanel
-          defaultWidth={400}
-          minWidth={280}
-          maxWidth={700}
-          side="right"
-          collapsed={explanationCollapsed}
-          onCollapse={() => setExplanationCollapsed(c => !c)}
-          label="AI Review"
-        >
-          <ExplanationPanel />
-        </ResizablePanel>
-      </div>
+      )}
 
       <StatusBar />
     </div>
@@ -72,9 +124,11 @@ function MainLayout() {
 export function App() {
   return (
     <TooltipProvider>
-      <ReviewProvider>
-        <MainLayout />
-      </ReviewProvider>
+      <TabsProvider>
+        <ReviewProvider>
+          <MainLayout />
+        </ReviewProvider>
+      </TabsProvider>
     </TooltipProvider>
   );
 }

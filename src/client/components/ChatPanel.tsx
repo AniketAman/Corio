@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useReview } from '../context/ReviewContext';
+import { useTabs } from '../context/TabsContext';
 import { tauriApi } from '../hooks/useTauriApi';
 import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
@@ -7,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 export function ChatPanel() {
   const [input, setInput] = useState('');
   const { chatHistory, addChatMessage, sessionId, setSessionId, explanation, prData } = useReview();
+  const { activeTabId } = useTabs();
   const [sending, setSending] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
 
@@ -19,6 +21,9 @@ export function ChatPanel() {
     setInput('');
     setSending(true);
     setStreamingMessage('');
+
+    // Capture tabId at start of this send flow
+    const tabId = activeTabId;
 
     addChatMessage({
       role: 'user',
@@ -35,7 +40,7 @@ export function ChatPanel() {
         const diff = await tauriApi.fetchPRDiff(prData.owner, prData.repo, prData.number);
 
         // Start a new session with context, listen for session ID
-        const sessionUnlisten = await tauriApi.onReviewSessionId((sid) => {
+        const sessionUnlisten = await tauriApi.onReviewSessionIdForTab(tabId, (sid) => {
           activeSessionId = sid;
           setSessionId(sid);
           sessionUnlisten();
@@ -43,10 +48,11 @@ export function ChatPanel() {
 
         // Wait for review to create session and complete
         const completePromise = new Promise<void>((resolve) => {
-          tauriApi.onReviewComplete(() => resolve());
+          tauriApi.onReviewCompleteForTab(tabId, () => resolve());
         });
 
         await tauriApi.startReview(
+          tabId,
           prData,
           diff,
           'opus',
@@ -61,12 +67,12 @@ export function ChatPanel() {
         throw new Error('No session available');
       }
 
-      const unlistenChunk = await tauriApi.onChatChunk((chunk) => {
+      const unlistenChunk = await tauriApi.onChatChunkForTab(tabId, (chunk) => {
         assistantMessage += chunk;
         setStreamingMessage(assistantMessage);
       });
 
-      const unlistenComplete = await tauriApi.onChatComplete(() => {
+      const unlistenComplete = await tauriApi.onChatCompleteForTab(tabId, () => {
         unlistenChunk();
         unlistenComplete();
         addChatMessage({ role: 'assistant', content: assistantMessage, timestamp: Date.now() });
@@ -74,7 +80,7 @@ export function ChatPanel() {
         setSending(false);
       });
 
-      await tauriApi.sendChatMessage(question, activeSessionId, 'opus', null);
+      await tauriApi.sendChatMessage(tabId, question, activeSessionId, 'opus', null);
     } catch (error) {
       console.error('Chat failed:', error);
       setStreamingMessage('');

@@ -2,12 +2,9 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { tauriApi, PRMetadata, Preset } from '../hooks/useTauriApi';
 import { RepoPathPicker } from '../components/RepoPathPicker';
+import { useTabs, ChatMessage } from './TabsContext';
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-}
+export type { ChatMessage };
 
 interface ReviewContextType {
   prData: PRMetadata | null;
@@ -48,41 +45,90 @@ interface ReviewContextType {
 const ReviewContext = createContext<ReviewContextType | undefined>(undefined);
 
 export function ReviewProvider({ children }: { children: ReactNode }) {
-  const [prData, setPrData] = useState<PRMetadata | null>(null);
-  const [explanation, setExplanation] = useState('');
-  const [fileExplanations, setFileExplanations] = useState<Record<string, string>>({});
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [mode, setMode] = useState<'repo' | 'standalone'>('standalone');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPrUrl, setCurrentPrUrl] = useState<string | null>(null);
-  const [activePresetId, setActivePresetId] = useState(() => {
-    return localStorage.getItem('code-reviewer:preset') || 'review';
-  });
-  const [presets, setPresets] = useState<Preset[]>([]);
-  const [annotations, setAnnotations] = useState<Record<string, number[]>>({});
-  const [highlightedAnnotation, setHighlightedAnnotation] = useState<{ file: string; line: number } | null>(null);
-  const [a2uiPayload, setA2uiPayload] = useState<object[] | null>(null);
-  const [a2uiLoading, setA2uiLoading] = useState(false);
-  const [a2uiError, setA2uiError] = useState<string | null>(null);
-  const [isCachedReview, setIsCachedReview] = useState(false);
+  const { activeTabId, activeTab, updateTab } = useTabs();
 
+  // Global state (not per-tab)
+  const [presets, setPresets] = useState<Preset[]>([]);
+
+  // Modal state for repo path picker
   const [repoPickerState, setRepoPickerState] = useState<{
     owner: string;
     repo: string;
     resolve: (path: string | null) => void;
   } | null>(null);
 
-  const worktreePathRef = useRef<string | null>(null);
-  const repoPathRef = useRef<string | null>(null);
   const skipCacheRef = useRef(false);
 
-  const scrollToAnnotation = useCallback((file: string, line: number) => {
-    setHighlightedAnnotation({ file, line });
-  }, []);
+  // --- Derive state from activeTab ---
+  const prData = activeTab.prData;
+  const explanation = activeTab.explanation;
+  const fileExplanations = activeTab.fileExplanations;
+  const selectedFile = activeTab.selectedFile;
+  const mode = activeTab.mode;
+  const sessionId = activeTab.sessionId;
+  const chatHistory = activeTab.chatHistory;
+  const loading = activeTab.loading;
+  const error = activeTab.error;
+  const currentPrUrl = activeTab.prUrl;
+  const activePresetId = activeTab.activePresetId;
+  const annotations = activeTab.annotations;
+  const highlightedAnnotation = activeTab.highlightedAnnotation;
+  const a2uiPayload = activeTab.a2uiPayload;
+  const a2uiLoading = activeTab.a2uiLoading;
+  const a2uiError = activeTab.a2uiError;
+  const isCachedReview = activeTab.isCachedReview;
 
+  // --- Setters that write to active tab ---
+  const setPrData = useCallback((data: PRMetadata | null) => {
+    updateTab(activeTabId, { prData: data });
+  }, [activeTabId, updateTab]);
+
+  const setExplanation = useCallback((exp: string) => {
+    updateTab(activeTabId, { explanation: exp });
+  }, [activeTabId, updateTab]);
+
+  const setFileExplanations = useCallback((exps: Record<string, string>) => {
+    updateTab(activeTabId, { fileExplanations: exps });
+  }, [activeTabId, updateTab]);
+
+  const setSelectedFile = useCallback((file: string | null) => {
+    updateTab(activeTabId, { selectedFile: file });
+  }, [activeTabId, updateTab]);
+
+  const setMode = useCallback((m: 'repo' | 'standalone') => {
+    updateTab(activeTabId, { mode: m });
+  }, [activeTabId, updateTab]);
+
+  const setSessionId = useCallback((id: string | null) => {
+    updateTab(activeTabId, { sessionId: id });
+  }, [activeTabId, updateTab]);
+
+  const addChatMessage = useCallback((msg: ChatMessage) => {
+    updateTab(activeTabId, { chatHistory: [...activeTab.chatHistory, msg] });
+  }, [activeTabId, activeTab.chatHistory, updateTab]);
+
+  const setLoading = useCallback((l: boolean) => {
+    updateTab(activeTabId, { loading: l });
+  }, [activeTabId, updateTab]);
+
+  const setError = useCallback((err: string | null) => {
+    updateTab(activeTabId, { error: err });
+  }, [activeTabId, updateTab]);
+
+  const setCurrentPrUrl = useCallback((url: string | null) => {
+    updateTab(activeTabId, { prUrl: url });
+  }, [activeTabId, updateTab]);
+
+  const setActivePresetId = useCallback((id: string) => {
+    updateTab(activeTabId, { activePresetId: id });
+    localStorage.setItem('code-reviewer:preset', id);
+  }, [activeTabId, updateTab]);
+
+  const scrollToAnnotation = useCallback((file: string, line: number) => {
+    updateTab(activeTabId, { highlightedAnnotation: { file, line } });
+  }, [activeTabId, updateTab]);
+
+  // --- Helpers ---
   const parseFileMarkers = useCallback((text: string) => {
     const fileMap: Record<string, string> = {};
     const fileRegex = /### FILE: (.+)\n([\s\S]*?)(?=### FILE:|### Potential Issues|### Key Takeaways|$)/g;
@@ -111,99 +157,94 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerA2UI = useCallback(async () => {
-    if (!explanation) return;
-    setA2uiLoading(true);
-    setA2uiPayload(null);
-    setA2uiError(null);
+    const tabId = activeTabId;
+    const currentExplanation = activeTab.explanation;
+    if (!currentExplanation) return;
+
+    updateTab(tabId, { a2uiLoading: true, a2uiPayload: null, a2uiError: null });
     try {
-      const payload = await tauriApi.convertToA2UI(explanation);
-      setA2uiPayload(payload);
+      const payload = await tauriApi.convertToA2UI(currentExplanation);
+      updateTab(tabId, { a2uiPayload: payload, a2uiLoading: false });
     } catch {
-      setA2uiError('A2UI conversion failed');
-    } finally {
-      setA2uiLoading(false);
+      updateTab(tabId, { a2uiError: 'A2UI conversion failed', a2uiLoading: false });
     }
-  }, [explanation]);
+  }, [activeTabId, activeTab.explanation, updateTab]);
 
-  useEffect(() => {
-    localStorage.setItem('code-reviewer:preset', activePresetId);
-  }, [activePresetId]);
-
-  // Load presets via Tauri
+  // Load presets via Tauri (global, not per-tab)
   useEffect(() => {
     tauriApi.getAllPresets()
       .then(data => setPresets(data))
       .catch(() => {});
   }, []);
 
-  const addChatMessage = (msg: ChatMessage) => {
-    setChatHistory(prev => [...prev, msg]);
-  };
-
-  const cleanupWorktree = useCallback(async () => {
-    if (worktreePathRef.current && repoPathRef.current) {
-      try {
-        await tauriApi.removeWorktree(repoPathRef.current, worktreePathRef.current);
-      } catch {
-        // Worktree cleanup is best-effort
-      }
-      worktreePathRef.current = null;
-    }
-  }, []);
 
   const triggerReview = useCallback(async (url: string) => {
     if (!url.trim()) return;
 
-    setLoading(true);
-    setPrData(null);
-    setExplanation('');
-    setFileExplanations({});
-    setAnnotations({});
-    setHighlightedAnnotation(null);
-    setError(null);
-    setCurrentPrUrl(url);
-    setChatHistory([]);
-    setA2uiPayload(null);
-    setA2uiError(null);
-    setIsCachedReview(false);
+    // Capture the tab ID at the start to avoid stale closure issues if user switches tabs
+    const tabId = activeTabId;
+    const presetId = activeTab.activePresetId;
 
-    // Cleanup any previous worktree
-    await cleanupWorktree();
+    // Reset tab state
+    updateTab(tabId, {
+      loading: true,
+      prData: null,
+      explanation: '',
+      fileExplanations: {},
+      annotations: {},
+      highlightedAnnotation: null,
+      error: null,
+      prUrl: url,
+      chatHistory: [],
+      a2uiPayload: null,
+      a2uiError: null,
+      isCachedReview: false,
+      sessionId: null,
+    });
+
+    // Cleanup any previous worktree for this tab
+    const prevWorktreePath = activeTab.worktreePath;
+    const prevRepoPath = activeTab.repoPath;
+    if (prevWorktreePath && prevRepoPath) {
+      try {
+        await tauriApi.removeWorktree(prevRepoPath, prevWorktreePath);
+      } catch {
+        // best-effort
+      }
+      updateTab(tabId, { worktreePath: null });
+    }
 
     try {
       // 1. Fetch PR metadata
       const pr = await tauriApi.fetchPRMetadata(url);
-      setPrData(pr);
+      updateTab(tabId, { prData: pr });
 
       // 2. Check cache (unless bypassed)
       if (!skipCacheRef.current) {
         const cached = await tauriApi.getCachedReview(
-          pr.owner, pr.repo, pr.number, activePresetId, pr.headSha
+          pr.owner, pr.repo, pr.number, presetId, pr.headSha
         );
 
         if (cached) {
-          // Use cached review
           const reviewText = cached.reviewText;
-          setExplanation(reviewText);
-
           const fileMap = parseFileMarkers(reviewText);
-          if (Object.keys(fileMap).length > 0) {
-            setFileExplanations(fileMap);
-          }
+          const parsedAnnotations = parseAnnotations(reviewText);
 
-          setAnnotations(parseAnnotations(reviewText));
-          setIsCachedReview(true);
-          setLoading(false);
+          updateTab(tabId, {
+            explanation: reviewText,
+            fileExplanations: Object.keys(fileMap).length > 0 ? fileMap : {},
+            annotations: parsedAnnotations,
+            isCachedReview: true,
+            loading: false,
+          });
 
           // Auto-trigger A2UI for cached reviews
-          setA2uiLoading(true);
+          updateTab(tabId, { a2uiLoading: true });
           try {
             const payload = await tauriApi.convertToA2UI(reviewText);
-            setA2uiPayload(payload);
+            updateTab(tabId, { a2uiPayload: payload, a2uiLoading: false });
           } catch {
-            setA2uiError('A2UI conversion failed');
-          } finally {
-            setA2uiLoading(false);
+            updateTab(tabId, { a2uiError: 'A2UI conversion failed', a2uiLoading: false });
           }
 
           return;
@@ -227,49 +268,48 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       }
 
       if (repoPath) {
-        setMode('repo');
-        repoPathRef.current = repoPath;
+        updateTab(tabId, { mode: 'repo', repoPath });
         try {
           worktreePath = await tauriApi.createWorktree(repoPath, pr.repo, pr.number, pr.headRef);
-          worktreePathRef.current = worktreePath;
+          updateTab(tabId, { worktreePath });
         } catch {
-          // Worktree creation failed — proceed without it
+          // Worktree creation failed - proceed without it
           worktreePath = null;
         }
       } else {
-        setMode('standalone');
+        updateTab(tabId, { mode: 'standalone' });
       }
 
       // 5. Setup event listeners BEFORE starting review
       let explanationText = '';
       const unlistenFns: UnlistenFn[] = [];
 
-      const chunkUnlisten = await tauriApi.onReviewChunk((chunk: string) => {
+      const chunkUnlisten = await tauriApi.onReviewChunkForTab(tabId, (chunk: string) => {
         explanationText += chunk;
-        setExplanation(explanationText);
+        updateTab(tabId, { explanation: explanationText });
 
         // Parse file markers incrementally
         const fileMap = parseFileMarkers(explanationText);
         if (Object.keys(fileMap).length > 0) {
-          setFileExplanations(fileMap);
+          updateTab(tabId, { fileExplanations: fileMap });
         }
       });
       unlistenFns.push(chunkUnlisten);
 
-      const sessionUnlisten = await tauriApi.onReviewSessionId((sid: string) => {
-        setSessionId(sid);
+      const sessionUnlisten = await tauriApi.onReviewSessionIdForTab(tabId, (sid: string) => {
+        updateTab(tabId, { sessionId: sid });
       });
       unlistenFns.push(sessionUnlisten);
 
       const completePromise = new Promise<void>((resolve, reject) => {
-        tauriApi.onReviewComplete(() => {
+        tauriApi.onReviewCompleteForTab(tabId, () => {
           resolve();
         }).then(unlisten => unlistenFns.push(unlisten)).catch(reject);
       });
 
       // 6. Start review
       const model = 'opus'; // Default model
-      await tauriApi.startReview(pr, diff, model, activePresetId, worktreePath);
+      await tauriApi.startReview(tabId, pr, diff, model, presetId, worktreePath);
 
       // 7. Wait for review-complete event
       await completePromise;
@@ -280,46 +320,61 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       }
 
       // 8. Parse annotations from completed text
-      setAnnotations(parseAnnotations(explanationText));
+      updateTab(tabId, { annotations: parseAnnotations(explanationText) });
 
       // 9. Save to cache
       try {
         await tauriApi.saveCachedReview(
-          pr.owner, pr.repo, pr.number, activePresetId, pr.headSha, explanationText, pr
+          pr.owner, pr.repo, pr.number, presetId, pr.headSha, explanationText, pr
         );
       } catch {
         // Cache save failure is non-critical
       }
 
       // 10. Cleanup worktree
-      await cleanupWorktree();
+      if (worktreePath && repoPath) {
+        try {
+          await tauriApi.removeWorktree(repoPath, worktreePath);
+        } catch {
+          // best-effort
+        }
+        updateTab(tabId, { worktreePath: null });
+      }
 
       // 11. Auto-trigger A2UI
       if (explanationText) {
-        setA2uiLoading(true);
+        updateTab(tabId, { a2uiLoading: true });
         try {
           const payload = await tauriApi.convertToA2UI(explanationText);
-          setA2uiPayload(payload);
+          updateTab(tabId, { a2uiPayload: payload, a2uiLoading: false });
         } catch {
-          setA2uiError('A2UI conversion failed');
-        } finally {
-          setA2uiLoading(false);
+          updateTab(tabId, { a2uiError: 'A2UI conversion failed', a2uiLoading: false });
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Review failed');
-      await cleanupWorktree();
+      updateTab(tabId, { error: err.message || 'Review failed' });
+      // Cleanup worktree on failure
+      const tab = activeTab;
+      if (tab.worktreePath && tab.repoPath) {
+        try {
+          await tauriApi.removeWorktree(tab.repoPath, tab.worktreePath);
+        } catch {
+          // best-effort
+        }
+        updateTab(tabId, { worktreePath: null });
+      }
     } finally {
-      setLoading(false);
+      updateTab(tabId, { loading: false });
     }
-  }, [activePresetId, parseFileMarkers, parseAnnotations, cleanupWorktree]);
+  }, [activeTabId, activeTab, updateTab, parseFileMarkers, parseAnnotations]);
 
   const forceReReview = useCallback(() => {
-    if (!currentPrUrl) return;
-    setIsCachedReview(false);
+    const url = activeTab.prUrl;
+    if (!url) return;
+    updateTab(activeTabId, { isCachedReview: false });
     skipCacheRef.current = true;
-    triggerReview(currentPrUrl);
-  }, [currentPrUrl, triggerReview]);
+    triggerReview(url);
+  }, [activeTabId, activeTab.prUrl, updateTab, triggerReview]);
 
   return (
     <ReviewContext.Provider
