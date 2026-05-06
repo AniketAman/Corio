@@ -24,6 +24,14 @@
       "csp": null
     }
   },
+  "plugins": {
+    "deep-link": {
+      "mobile": [],
+      "desktop": {
+        "schemes": ["code-reviewer"]
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["dmg"],

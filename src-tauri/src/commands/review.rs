@@ -1,4 +1,5 @@
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_notification::NotificationExt;
 use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader, Write};
 use crate::commands::github::PRMetadata;
@@ -161,6 +162,13 @@ pub async fn start_review(
         // Wait for the claude process to finish
         let _ = child.wait();
         let _ = app_clone.emit("review-complete", ());
+
+        // Task 19: Send native notification when review is complete
+        let _ = app_clone.notification()
+            .builder()
+            .title("Review Complete")
+            .body("Your PR review is ready")
+            .show();
     });
 
     // Wait briefly for the session ID to be captured from the stream
