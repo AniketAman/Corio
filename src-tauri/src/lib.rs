@@ -14,6 +14,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::github::fetch_pr_metadata,
             commands::github::fetch_pr_diff,
+            commands::config::load_config,
+            commands::config::save_config,
+            commands::config::get_repo_path,
+            commands::config::save_repo_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
