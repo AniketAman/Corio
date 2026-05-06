@@ -9,6 +9,7 @@ interface ReviewSubmitPopoverProps {
 export function ReviewSubmitPopover({ onClose }: ReviewSubmitPopoverProps) {
   const {
     pendingReview,
+    addPendingComment,
     removePendingComment,
     submitReview,
     reviewSubmitting,
@@ -17,6 +18,19 @@ export function ReviewSubmitPopover({ onClose }: ReviewSubmitPopoverProps) {
 
   const [verdict, setVerdict] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>('COMMENT');
   const [summaryBody, setSummaryBody] = useState('');
+  const [newComment, setNewComment] = useState('');
+  const [showCommentInput, setShowCommentInput] = useState(false);
+
+  const handleAddComment = () => {
+    if (!newComment.trim()) return;
+    addPendingComment({
+      body: newComment.trim(),
+      type: 'general',
+      source: 'manual',
+    });
+    setNewComment('');
+    setShowCommentInput(false);
+  };
 
   const canSubmit =
     verdict === 'APPROVE' ||
@@ -91,6 +105,45 @@ export function ReviewSubmitPopover({ onClose }: ReviewSubmitPopoverProps) {
             className="w-full h-20 px-3 py-2 bg-surface text-text-primary border border-border rounded-[var(--radius-sm)] text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none"
             disabled={reviewSubmitting}
           />
+        </div>
+
+        {/* Add PR-level Comment */}
+        <div>
+          {showCommentInput ? (
+            <div className="space-y-2">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Write a PR-level comment..."
+                className="w-full h-16 px-3 py-2 bg-surface text-text-primary border border-border rounded-[var(--radius-sm)] text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all resize-none"
+                autoFocus
+                disabled={reviewSubmitting}
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={() => { setShowCommentInput(false); setNewComment(''); }}
+                  className="px-2 py-1 text-[11px] text-text-muted hover:text-text-secondary bg-transparent border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  className="px-2.5 py-1 text-[11px] font-medium bg-accent text-white rounded-[var(--radius-sm)] hover:bg-accent-hover cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCommentInput(true)}
+              disabled={reviewSubmitting}
+              className="text-[12px] text-accent hover:text-accent-hover bg-transparent border border-accent/30 rounded-[var(--radius-sm)] px-2.5 py-1 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              + Add PR comment
+            </button>
+          )}
         </div>
 
         {/* Pending Comments List */}
