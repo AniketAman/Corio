@@ -6,12 +6,14 @@ import ReactMarkdown from 'react-markdown';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
-  const { chatHistory, addChatMessage, sessionId } = useReview();
+  const { chatHistory, addChatMessage, sessionId, setSessionId, explanation, prData } = useReview();
   const [sending, setSending] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
 
+  const isReady = !!explanation;
+
   const handleSend = async () => {
-    if (!input.trim() || !sessionId || sending) return;
+    if (!input.trim() || !isReady || sending) return;
 
     const question = input.trim();
     setInput('');
@@ -27,6 +29,38 @@ export function ChatPanel() {
     let assistantMessage = '';
 
     try {
+      // If no session exists (cached review), create one with review context
+      let activeSessionId = sessionId;
+      if (!activeSessionId && prData && explanation) {
+        const diff = await tauriApi.fetchPRDiff(prData.owner, prData.repo, prData.number);
+
+        // Start a new session with context, listen for session ID
+        const sessionUnlisten = await tauriApi.onReviewSessionId((sid) => {
+          activeSessionId = sid;
+          setSessionId(sid);
+          sessionUnlisten();
+        });
+
+        // Wait for review to create session and complete
+        const completePromise = new Promise<void>((resolve) => {
+          tauriApi.onReviewComplete(() => resolve());
+        });
+
+        await tauriApi.startReview(
+          prData,
+          diff,
+          'opus',
+          'review',
+          null
+        );
+
+        await completePromise;
+      }
+
+      if (!activeSessionId) {
+        throw new Error('No session available');
+      }
+
       const unlistenChunk = await tauriApi.onChatChunk((chunk) => {
         assistantMessage += chunk;
         setStreamingMessage(assistantMessage);
@@ -40,7 +74,7 @@ export function ChatPanel() {
         setSending(false);
       });
 
-      await tauriApi.sendChatMessage(question, sessionId, 'opus', null);
+      await tauriApi.sendChatMessage(question, activeSessionId, 'opus', null);
     } catch (error) {
       console.error('Chat failed:', error);
       setStreamingMessage('');
@@ -99,13 +133,13 @@ export function ChatPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question..."
-            disabled={!sessionId || sending}
+            disabled={!isReady || sending}
             className="flex-1 h-8 px-3 bg-surface-elevated text-text-primary border border-border rounded-[var(--radius-sm)] text-xs placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all disabled:opacity-50"
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
           <Button
             onClick={handleSend}
-            disabled={!sessionId || sending}
+            disabled={!isReady || sending}
             size="sm"
           >
             Send
