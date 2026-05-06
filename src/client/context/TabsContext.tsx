@@ -7,6 +7,20 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface PendingComment {
+  id: string;
+  body: string;
+  type: 'inline' | 'general';
+  path?: string;
+  line?: number;
+  source: 'finding' | 'manual';
+  findingId?: string;
+}
+
+export interface PendingReview {
+  comments: PendingComment[];
+}
+
 export interface TabState {
   id: string;
   prUrl: string | null;
@@ -28,6 +42,7 @@ export interface TabState {
   worktreePath: string | null;
   repoPath: string | null;
   activePresetId: string;
+  pendingReview: PendingReview;
 }
 
 interface TabsContextType {
@@ -66,6 +81,7 @@ const createDefaultTabState = (id: string, prUrl?: string): TabState => {
     worktreePath: null,
     repoPath: null,
     activePresetId: savedPreset,
+    pendingReview: { comments: [] },
   };
 };
 
