@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useReview } from '../context/ReviewContext';
 import { Badge } from './ui/badge';
 import { useTheme } from '../hooks/useTheme';
+import { ReviewSubmitPopover } from './ReviewSubmitPopover';
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -31,7 +33,10 @@ function ThemeToggle() {
 }
 
 export function StatusBar() {
-  const { prData, mode } = useReview();
+  const { prData, mode, currentPrUrl, pendingReview } = useReview();
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  const pendingCount = pendingReview.comments.length;
 
   if (!prData) {
     return (
@@ -54,8 +59,33 @@ export function StatusBar() {
           <span className="text-success">+{prData.additions}</span>
           <span className="text-danger">-{prData.deletions}</span>
         </span>
+        {currentPrUrl && (
+          <a
+            href={currentPrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:text-accent-hover hover:underline truncate max-w-[300px]"
+          >
+            {currentPrUrl}
+          </a>
+        )}
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-3">
+        {pendingCount > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setPopoverOpen(!popoverOpen)}
+              className="px-3 py-1 rounded-[var(--radius-sm)] text-xs font-medium bg-accent text-white hover:bg-accent-hover cursor-pointer transition-colors"
+            >
+              Submit Review ({pendingCount})
+            </button>
+            {popoverOpen && (
+              <ReviewSubmitPopover onClose={() => setPopoverOpen(false)} />
+            )}
+          </div>
+        )}
+        <ThemeToggle />
+      </div>
     </div>
   );
 }
