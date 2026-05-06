@@ -190,8 +190,12 @@ User pastes PR URL (or deep link / global shortcut)
 
 ### System Theme
 
-- Follow macOS appearance (light/dark)
-- Tailwind `@media (prefers-color-scheme: dark)` — existing CSS likely supports this already
+- Three-way toggle: Light / Dark / System (follows macOS appearance)
+- Toggle located in the status bar (bottom-right)
+- Preference persisted to localStorage
+- CSS custom properties on `:root.light` override dark defaults — clean white surfaces (#fff background, #f9fafb elevated)
+- Monaco editors (DiffViewer, PresetEditor) switch between `vs` and `vs-dark` themes reactively
+- System mode listens to `prefers-color-scheme` media query changes in real-time
 
 ### Auto-Updater
 
