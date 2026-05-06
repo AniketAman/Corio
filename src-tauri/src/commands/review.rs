@@ -171,8 +171,7 @@ pub async fn start_review(
             .show();
     });
 
-    // Wait briefly for the session ID to be captured from the stream
-    std::thread::sleep(std::time::Duration::from_millis(2000));
-    let final_session_id = session_id.lock().unwrap().clone();
-    Ok(final_session_id)
+    // Return immediately — session ID is delivered via the review-session-id event
+    // The frontend listens for this event and updates sessionId in context
+    Ok(String::new())
 }

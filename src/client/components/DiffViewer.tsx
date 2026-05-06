@@ -22,14 +22,23 @@ export function DiffViewer() {
       return;
     }
 
+    let cancelled = false;
+
     const fetchContents = async () => {
       try {
-        const repoPath = await tauriApi.getRepoPath(prData.owner, prData.repo);
+        let repoRoot: string | null = null;
+        try {
+          repoRoot = await tauriApi.getRepoPath(prData.owner, prData.repo);
+        } catch {
+          // No repo registered — will use gh api fallback
+        }
 
         const [baseContent, headContent] = await Promise.all([
-          tauriApi.fetchFileContent(prData.owner, prData.repo, prData.baseRef, selectedFile, repoPath),
-          tauriApi.fetchFileContent(prData.owner, prData.repo, prData.headRef, selectedFile, repoPath),
+          tauriApi.fetchFileContent(prData.owner, prData.repo, prData.baseRef, selectedFile, repoRoot),
+          tauriApi.fetchFileContent(prData.owner, prData.repo, prData.headRef, selectedFile, repoRoot),
         ]);
+
+        if (cancelled) return;
 
         setOriginal(baseContent || '');
         setModified(headContent || '');
@@ -51,6 +60,7 @@ export function DiffViewer() {
     };
 
     fetchContents();
+    return () => { cancelled = true; };
   }, [prData, selectedFile]);
 
   const handleMount: DiffOnMount = (editor) => {

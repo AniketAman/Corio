@@ -135,12 +135,24 @@ pub async fn fetch_file_content(
     repo_root: Option<String>,
 ) -> Result<String, String> {
     // Strategy 1: git show from local repo
-    if let Some(root) = repo_root {
-        let ref_path = format!("{}:{}", file_ref, path);
-        let result = run_command("git", &["show", &ref_path], Some(&root))?;
+    if let Some(root) = &repo_root {
+        // Ensure we have latest refs
+        let _ = run_command("git", &["fetch", "origin", "--quiet"], Some(root));
+
+        // Try origin/<ref> first (works for remote branches after fetch)
+        let origin_ref = format!("origin/{}:{}", file_ref, path);
+        let result = run_command("git", &["show", &origin_ref], Some(root))?;
         if result.exit_code == 0 {
             return Ok(result.stdout);
         }
+
+        // Try bare ref (works for local branches and commit SHAs)
+        let ref_path = format!("{}:{}", file_ref, path);
+        let result = run_command("git", &["show", &ref_path], Some(root))?;
+        if result.exit_code == 0 {
+            return Ok(result.stdout);
+        }
+
         // File doesn't exist at this ref (new/deleted)
         return Ok(String::new());
     }
