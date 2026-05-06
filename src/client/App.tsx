@@ -5,7 +5,7 @@ import { TabBar } from './components/TabBar';
 import { EmptyTab } from './components/EmptyTab';
 import { FileTree } from './components/FileTree';
 import { DiffViewer } from './components/DiffViewer';
-import { ExplanationPanel } from './components/ExplanationPanel';
+import { ReviewPanelTabs } from './components/ReviewPanelTabs';
 import { StatusBar } from './components/StatusBar';
 import { ResizablePanel } from './components/ResizablePanel';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -109,9 +109,9 @@ function MainLayout() {
             side="right"
             collapsed={explanationCollapsed}
             onCollapse={() => setExplanationCollapsed(c => !c)}
-            label="AI Review"
+            label="Review"
           >
-            <ExplanationPanel />
+            <ReviewPanelTabs />
           </ResizablePanel>
         </div>
       )}
