@@ -59,6 +59,7 @@ pub async fn start_review(
     model: String,
     preset_id: String,
     worktree_path: Option<String>,
+    tab_id: String,
 ) -> Result<String, String> {
     // Get preset
     let presets = crate::commands::presets::get_all_presets().await?;
@@ -121,6 +122,7 @@ pub async fn start_review(
 
     // Spawn a background thread to read stdout and emit Tauri events
     let app_clone = app.clone();
+    let tab_id_clone = tab_id.clone();
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
@@ -139,7 +141,7 @@ pub async fn start_review(
                     if let Some(sid) = data["session_id"].as_str() {
                         let mut session = session_id_clone.lock().unwrap();
                         *session = sid.to_string();
-                        let _ = app_clone.emit("review-session-id", sid.to_string());
+                        let _ = app_clone.emit("review-session-id", serde_json::json!({ "tabId": tab_id_clone, "sessionId": sid }));
                     }
                 }
 
@@ -149,7 +151,7 @@ pub async fn start_review(
                         for block in content {
                             if block["type"] == "text" {
                                 if let Some(text) = block["text"].as_str() {
-                                    let _ = app_clone.emit("review-chunk", text.to_string());
+                                    let _ = app_clone.emit("review-chunk", serde_json::json!({ "tabId": tab_id_clone, "text": text }));
                                 }
                             }
                         }
@@ -159,7 +161,7 @@ pub async fn start_review(
                 // Handle streaming content_block_delta events
                 if data["type"] == "content_block_delta" {
                     if let Some(text) = data["delta"]["text"].as_str() {
-                        let _ = app_clone.emit("review-chunk", text.to_string());
+                        let _ = app_clone.emit("review-chunk", serde_json::json!({ "tabId": tab_id_clone, "text": text }));
                     }
                 }
             }
@@ -167,7 +169,7 @@ pub async fn start_review(
 
         // Wait for the claude process to finish
         let _ = child.wait();
-        let _ = app_clone.emit("review-complete", ());
+        let _ = app_clone.emit("review-complete", serde_json::json!({ "tabId": tab_id_clone }));
 
         // Task 19: Send native notification when review is complete
         let _ = app_clone.notification()

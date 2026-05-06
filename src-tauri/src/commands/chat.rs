@@ -9,6 +9,7 @@ pub async fn send_chat_message(
     session_id: String,
     model: String,
     worktree_path: Option<String>,
+    tab_id: String,
 ) -> Result<(), String> {
     let mut args = vec![
         "-p".to_string(),
@@ -55,6 +56,7 @@ pub async fn send_chat_message(
         .ok_or_else(|| "Failed to capture stdout".to_string())?;
 
     let app_clone = app.clone();
+    let tab_id_clone = tab_id.clone();
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
@@ -74,7 +76,7 @@ pub async fn send_chat_message(
                         for block in content {
                             if block["type"] == "text" {
                                 if let Some(text) = block["text"].as_str() {
-                                    let _ = app_clone.emit("chat-chunk", text.to_string());
+                                    let _ = app_clone.emit("chat-chunk", serde_json::json!({ "tabId": tab_id_clone, "text": text }));
                                 }
                             }
                         }
@@ -84,14 +86,14 @@ pub async fn send_chat_message(
                 // Handle streaming content_block_delta
                 if data["type"] == "content_block_delta" {
                     if let Some(text) = data["delta"]["text"].as_str() {
-                        let _ = app_clone.emit("chat-chunk", text.to_string());
+                        let _ = app_clone.emit("chat-chunk", serde_json::json!({ "tabId": tab_id_clone, "text": text }));
                     }
                 }
             }
         }
 
         let _ = child.wait();
-        let _ = app_clone.emit("chat-complete", ());
+        let _ = app_clone.emit("chat-complete", serde_json::json!({ "tabId": tab_id_clone }));
     });
 
     Ok(())
