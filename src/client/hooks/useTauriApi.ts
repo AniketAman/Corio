@@ -113,6 +113,17 @@ export const tauriApi = {
   convertToA2UI: (reviewText: string) =>
     invoke<object[]>('convert_to_a2ui', { reviewText }),
 
+  // PR Review
+  submitReview: (
+    owner: string,
+    repo: string,
+    number: number,
+    headSha: string,
+    verdict: string,
+    body: string | undefined,
+    comments: Array<{ path: string; line: number; body: string }>,
+  ) => invoke<void>('submit_review', { owner, repo, number, headSha, verdict, body, comments }),
+
   // Tab-filtered event listeners
   onReviewChunkForTab: (tabId: string, callback: (chunk: string) => void): Promise<UnlistenFn> =>
     listen<{ tabId: string; text: string }>('review-chunk', (event) => {
