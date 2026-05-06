@@ -499,6 +499,45 @@ Expected: review streams normally → after completion, loader → Haiku convert
 
 ---
 
+---
+
+## Task 9: Additional Visual/Interactive Components
+
+**Files:**
+- Create: `src/client/a2ui/components/DiffSnippet.tsx`
+- Create: `src/client/a2ui/components/SeverityGauge.tsx`
+- Create: `src/client/a2ui/components/FileHeatmap.tsx`
+- Create: `src/client/a2ui/components/BeforeAfterCode.tsx`
+- Create: `src/client/a2ui/components/SummaryStatsRow.tsx`
+- Create: `src/client/a2ui/components/VoteButtons.tsx`
+- Create: `src/client/a2ui/components/CommentDraft.tsx`
+- Create: `src/client/a2ui/components/TagPills.tsx`
+- Create: `src/client/a2ui/components/ToastFeedback.tsx`
+- Modify: `src/client/a2ui/catalog/index.tsx` (register all 9)
+- Modify: `src/server/services/a2ui/catalog-schema.ts` (add new component schemas for Haiku)
+
+### Components
+
+| Component | Purpose | Key visual |
+|-----------|---------|------------|
+| DiffSnippet | Inline 3-7 line code preview with highlighted problem lines | Monospace, line numbers, red highlight |
+| SeverityGauge | Circular SVG gauge showing overall review health (0-100) | Colored arc, big center number |
+| FileHeatmap | Mini horizontal bar chart of issue density per file | Proportional bars, gradient color |
+| BeforeAfterCode | Side-by-side problem vs fix code | Red left, green right, "Copy fix" button |
+| SummaryStatsRow | Row of metric cards (findings, files, confidence, etc.) | Dashboard-style stat boxes |
+| VoteButtons | Thumbs up/down/N/A for each finding | Compact button group, colored active state |
+| CommentDraft | Compose + copy a GitHub PR comment from a finding | Textarea + format + copy workflow |
+| TagPills | Clickable category tags (performance, security, style) | Colored pills, multi-select toggle |
+| ToastFeedback | Animated notification after actions | Slide-up, auto-dismiss, variant colors |
+
+- [ ] **Step 1: Create all 9 component files**
+- [ ] **Step 2: Register in catalog**
+- [ ] **Step 3: Update catalog-schema.ts with new component definitions for Haiku**
+- [ ] **Step 4: Verify TypeScript + build**
+- [ ] **Step 5: Commit**
+
+---
+
 ## Completion
 
 The A2UI experimental feature is complete:

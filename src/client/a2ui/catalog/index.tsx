@@ -1,10 +1,19 @@
 import { cn } from '../../lib/utils';
 import { AcknowledgeCheckbox } from '../components/AcknowledgeCheckbox';
+import { BeforeAfterCode } from '../components/BeforeAfterCode';
 import { CollapsibleSection } from '../components/CollapsibleSection';
+import { CommentDraft } from '../components/CommentDraft';
 import { CopyButton } from '../components/CopyButton';
+import { DiffSnippet } from '../components/DiffSnippet';
+import { FileHeatmap } from '../components/FileHeatmap';
 import { FilterBar } from '../components/FilterBar';
 import { InteractiveCard } from '../components/InteractiveCard';
 import { ProgressTracker } from '../components/ProgressTracker';
+import { SeverityGauge } from '../components/SeverityGauge';
+import { SummaryStatsRow } from '../components/SummaryStatsRow';
+import { TagPills } from '../components/TagPills';
+import { ToastFeedback } from '../components/ToastFeedback';
+import { VoteButtons } from '../components/VoteButtons';
 import type { A2UICatalog, ComponentRenderer } from './types';
 
 // --- Primitive renderers ---
@@ -354,6 +363,42 @@ const CollapsibleSectionRenderer: ComponentRenderer = (props) => {
   return CollapsibleSection(props);
 };
 
+const VoteButtonsRenderer: ComponentRenderer = (props) => {
+  return VoteButtons(props);
+};
+
+const CommentDraftRenderer: ComponentRenderer = (props) => {
+  return CommentDraft(props);
+};
+
+const TagPillsRenderer: ComponentRenderer = (props) => {
+  return TagPills(props);
+};
+
+const ToastFeedbackRenderer: ComponentRenderer = (props) => {
+  return ToastFeedback(props);
+};
+
+const DiffSnippetRenderer: ComponentRenderer = (props) => {
+  return DiffSnippet(props);
+};
+
+const SeverityGaugeRenderer: ComponentRenderer = (props) => {
+  return SeverityGauge(props);
+};
+
+const FileHeatmapRenderer: ComponentRenderer = (props) => {
+  return FileHeatmap(props);
+};
+
+const BeforeAfterCodeRenderer: ComponentRenderer = (props) => {
+  return BeforeAfterCode(props);
+};
+
+const SummaryStatsRowRenderer: ComponentRenderer = (props) => {
+  return SummaryStatsRow(props);
+};
+
 // --- Default catalog ---
 
 const defaultRenderers: Record<string, ComponentRenderer> = {
@@ -375,6 +420,15 @@ const defaultRenderers: Record<string, ComponentRenderer> = {
   FilterBar: FilterBarRenderer,
   CopyButton: CopyButtonRenderer,
   CollapsibleSection: CollapsibleSectionRenderer,
+  VoteButtons: VoteButtonsRenderer,
+  CommentDraft: CommentDraftRenderer,
+  TagPills: TagPillsRenderer,
+  ToastFeedback: ToastFeedbackRenderer,
+  DiffSnippet: DiffSnippetRenderer,
+  SeverityGauge: SeverityGaugeRenderer,
+  FileHeatmap: FileHeatmapRenderer,
+  BeforeAfterCode: BeforeAfterCodeRenderer,
+  SummaryStatsRow: SummaryStatsRowRenderer,
 };
 
 export function createCatalog(
