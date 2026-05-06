@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useReview } from '../context/ReviewContext';
+import { tauriApi } from '../hooks/useTauriApi';
 import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
-  const { chatHistory, addChatMessage, sessionId, mode } = useReview();
+  const { chatHistory, addChatMessage, sessionId } = useReview();
   const [sending, setSending] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
 
@@ -23,60 +24,26 @@ export function ChatPanel() {
       timestamp: Date.now()
     });
 
+    let assistantMessage = '';
+
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, sessionId, mode: { type: mode } })
+      const unlistenChunk = await tauriApi.onChatChunk((chunk) => {
+        assistantMessage += chunk;
+        setStreamingMessage(assistantMessage);
       });
 
-      if (!response.ok) throw new Error('Failed to send message');
+      const unlistenComplete = await tauriApi.onChatComplete(() => {
+        unlistenChunk();
+        unlistenComplete();
+        addChatMessage({ role: 'assistant', content: assistantMessage, timestamp: Date.now() });
+        setStreamingMessage('');
+        setSending(false);
+      });
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let assistantMessage = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-
-          const eventMatch = line.match(/^event: (.+)$/m);
-          const dataMatch = line.match(/^data: (.+)$/m);
-
-          if (eventMatch && dataMatch) {
-            const event = eventMatch[1];
-            const data = JSON.parse(dataMatch[1]);
-
-            if (event === 'message') {
-              assistantMessage += data.chunk;
-              setStreamingMessage(assistantMessage);
-            } else if (event === 'done') {
-              addChatMessage({
-                role: 'assistant',
-                content: assistantMessage,
-                timestamp: Date.now()
-              });
-              setStreamingMessage('');
-            } else if (event === 'error') {
-              console.error('Chat error:', data.message);
-            }
-          }
-        }
-      }
+      await tauriApi.sendChatMessage(question, sessionId, 'opus', null);
     } catch (error) {
       console.error('Chat failed:', error);
       setStreamingMessage('');
-    } finally {
       setSending(false);
     }
   };
