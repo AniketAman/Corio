@@ -51,6 +51,7 @@ pub fn run() {
             commands::review::start_review,
             commands::chat::send_chat_message,
             commands::a2ui::convert_to_a2ui,
+            commands::pr_review::submit_review,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,3 +6,4 @@ pub mod presets;
 pub mod review;
 pub mod chat;
 pub mod a2ui;
+pub mod pr_review;
