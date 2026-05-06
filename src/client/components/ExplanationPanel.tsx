@@ -14,6 +14,7 @@ export function ExplanationPanel() {
   const { explanation, fileExplanations, selectedFile, loading, activePresetId, highlightedAnnotation, a2uiEnabled, a2uiPayload, a2uiLoading } = useReview();
   const [viewMode, setViewMode] = useState<'file' | 'full'>('file');
   const [chatOpen, setChatOpen] = useState(false);
+  const [a2uiActive, setA2uiActive] = useState(true);
   const fileRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -95,8 +96,16 @@ export function ExplanationPanel() {
         )}
 
         {/* A2UI interactive view (experimental, behind --a2ui flag) */}
-        {a2uiEnabled && (a2uiPayload || a2uiLoading) && (
-          <A2UIView />
+        {a2uiEnabled && (a2uiPayload || a2uiLoading) && a2uiActive && (
+          <A2UIView onSwitchToClassic={() => setA2uiActive(false)} />
+        )}
+        {a2uiEnabled && a2uiPayload && !a2uiActive && (
+          <button
+            onClick={() => setA2uiActive(true)}
+            className="mb-3 text-[11px] text-accent hover:text-accent-hover bg-transparent border border-accent/30 rounded-[var(--radius-sm)] px-3 py-1 cursor-pointer transition-colors"
+          >
+            ✦ Switch to Interactive View
+          </button>
         )}
 
         {/* Preset-specific rich views */}

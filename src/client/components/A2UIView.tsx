@@ -1,12 +1,14 @@
-import { useState } from 'react';
 import { useReview } from '../context/ReviewContext';
 import { A2UIPanel } from '../a2ui';
 import type { A2UIAction, A2UIMessage } from '../a2ui';
 import { Badge } from './ui/badge';
 
-export function A2UIView() {
+interface A2UIViewProps {
+  onSwitchToClassic: () => void;
+}
+
+export function A2UIView({ onSwitchToClassic }: A2UIViewProps) {
   const { a2uiPayload, a2uiLoading, a2uiError, addChatMessage, sessionId } = useReview();
-  const [showClassic, setShowClassic] = useState(false);
 
   const handleAction = (action: A2UIAction) => {
     switch (action.type) {
@@ -27,14 +29,12 @@ export function A2UIView() {
     }
   };
 
-  if (showClassic) return null;
-
   if (a2uiError) {
     return (
       <div className="mb-4 p-3 bg-warning-muted border border-warning/30 rounded-[var(--radius)] text-xs text-warning flex items-center justify-between">
         <span>Interactive view unavailable: {a2uiError}</span>
         <button
-          onClick={() => setShowClassic(true)}
+          onClick={onSwitchToClassic}
           className="text-xs text-text-secondary hover:text-text-primary underline bg-transparent border-none cursor-pointer"
         >
           Dismiss
@@ -49,7 +49,7 @@ export function A2UIView() {
         <Badge variant="default" className="text-[10px]">Experimental</Badge>
         <span className="text-[11px] text-text-muted">Interactive View</span>
         <button
-          onClick={() => setShowClassic(true)}
+          onClick={onSwitchToClassic}
           className="ml-auto text-[11px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
         >
           Switch to Classic
@@ -59,7 +59,7 @@ export function A2UIView() {
         payload={a2uiPayload as A2UIMessage[] | null}
         loading={a2uiLoading}
         onAction={handleAction}
-        onFallback={() => setShowClassic(true)}
+        onFallback={onSwitchToClassic}
       />
     </div>
   );
