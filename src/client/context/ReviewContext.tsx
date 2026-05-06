@@ -65,6 +65,8 @@ interface ReviewContextType {
   highlightedAnnotation: { file: string; line: number } | null;
   scrollToAnnotation: (file: string, line: number) => void;
   a2uiEnabled: boolean;
+  setA2uiEnabled: (enabled: boolean) => void;
+  triggerA2UI: () => void;
   a2uiPayload: object[] | null;
   a2uiLoading: boolean;
   a2uiError: string | null;
@@ -89,7 +91,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [annotations, setAnnotations] = useState<Record<string, number[]>>({});
   const [highlightedAnnotation, setHighlightedAnnotation] = useState<{ file: string; line: number } | null>(null);
-  const [a2uiEnabled] = useState(() => new URLSearchParams(window.location.search).has('a2ui'));
+  const [a2uiEnabled, setA2uiEnabled] = useState(() => new URLSearchParams(window.location.search).has('a2ui'));
   const [a2uiPayload, setA2uiPayload] = useState<object[] | null>(null);
   const [a2uiLoading, setA2uiLoading] = useState(false);
   const [a2uiError, setA2uiError] = useState<string | null>(null);
@@ -97,6 +99,32 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const scrollToAnnotation = useCallback((file: string, line: number) => {
     setHighlightedAnnotation({ file, line });
   }, []);
+
+  const triggerA2UI = useCallback(async () => {
+    if (!explanation) return;
+    setA2uiEnabled(true);
+    setA2uiLoading(true);
+    setA2uiPayload(null);
+    setA2uiError(null);
+    try {
+      const res = await fetch('/api/a2ui/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewText: explanation, presetId: activePresetId })
+      });
+      if (res.ok) {
+        const { payload } = await res.json();
+        setA2uiPayload(payload);
+      } else {
+        const errData = await res.json().catch(() => ({ error: 'A2UI conversion failed' }));
+        setA2uiError(errData.error);
+      }
+    } catch {
+      setA2uiError('A2UI conversion failed');
+    } finally {
+      setA2uiLoading(false);
+    }
+  }, [explanation, activePresetId]);
 
   useEffect(() => {
     localStorage.setItem('code-reviewer:preset', activePresetId);
@@ -272,6 +300,8 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         highlightedAnnotation,
         scrollToAnnotation,
         a2uiEnabled,
+        setA2uiEnabled,
+        triggerA2UI,
         a2uiPayload,
         a2uiLoading,
         a2uiError,

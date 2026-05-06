@@ -11,7 +11,7 @@ import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
 
 export function ExplanationPanel() {
-  const { explanation, fileExplanations, selectedFile, loading, activePresetId, highlightedAnnotation, a2uiEnabled, a2uiPayload, a2uiLoading } = useReview();
+  const { explanation, fileExplanations, selectedFile, loading, activePresetId, highlightedAnnotation, a2uiEnabled, a2uiPayload, a2uiLoading, triggerA2UI } = useReview();
   const [viewMode, setViewMode] = useState<'file' | 'full'>('file');
   const [chatOpen, setChatOpen] = useState(false);
   const [a2uiActive, setA2uiActive] = useState(true);
@@ -95,7 +95,7 @@ export function ExplanationPanel() {
           </div>
         )}
 
-        {/* A2UI interactive view (experimental, behind --a2ui flag) */}
+        {/* A2UI interactive view */}
         {a2uiEnabled && (a2uiPayload || a2uiLoading) && a2uiActive && (
           <A2UIView onSwitchToClassic={() => setA2uiActive(false)} />
         )}
@@ -105,6 +105,15 @@ export function ExplanationPanel() {
             className="mb-3 text-[11px] text-accent hover:text-accent-hover bg-transparent border border-accent/30 rounded-[var(--radius-sm)] px-3 py-1 cursor-pointer transition-colors"
           >
             ✦ Switch to Interactive View
+          </button>
+        )}
+        {/* Trigger A2UI on demand (when not launched with --a2ui but review is complete) */}
+        {!a2uiEnabled && explanation && !loading && (
+          <button
+            onClick={triggerA2UI}
+            className="mb-3 text-[11px] text-accent hover:text-accent-hover bg-transparent border border-accent/30 rounded-[var(--radius-sm)] px-3 py-1 cursor-pointer transition-colors"
+          >
+            ✦ Generate Interactive View
           </button>
         )}
 
