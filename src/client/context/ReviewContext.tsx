@@ -79,7 +79,9 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPrUrl, setCurrentPrUrl] = useState<string | null>(null);
-  const [activePresetId, setActivePresetId] = useState('review');
+  const [activePresetId, setActivePresetId] = useState(() => {
+    return localStorage.getItem('code-reviewer:preset') || 'review';
+  });
   const [presets, setPresets] = useState<Preset[]>([]);
   const [annotations, setAnnotations] = useState<Record<string, number[]>>({});
   const [highlightedAnnotation, setHighlightedAnnotation] = useState<{ file: string; line: number } | null>(null);
@@ -87,6 +89,10 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const scrollToAnnotation = useCallback((file: string, line: number) => {
     setHighlightedAnnotation({ file, line });
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('code-reviewer:preset', activePresetId);
+  }, [activePresetId]);
 
   useEffect(() => {
     fetch('/api/presets')
