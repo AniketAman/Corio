@@ -7,10 +7,15 @@ pub struct StreamOutput {
 }
 
 pub fn run_command(program: &str, args: &[&str], cwd: Option<&str>) -> Result<StreamOutput, String> {
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_default();
+    let extended_path = format!("{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, path_env);
+
     let mut cmd = Command::new(program);
     cmd.args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .env("PATH", &extended_path);
 
     if let Some(dir) = cwd {
         cmd.current_dir(dir);

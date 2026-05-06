@@ -49,11 +49,16 @@ fn fix_a2ui_payload(raw: &str) -> Option<Vec<serde_json::Value>> {
 pub async fn convert_to_a2ui(review_text: String) -> Result<Vec<serde_json::Value>, String> {
     let prompt = build_a2ui_prompt(&review_text);
 
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_default();
+    let extended_path = format!("{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, path_env);
+
     let mut child = Command::new("claude")
         .args(&["-p", "--model", "haiku", "--output-format", "json"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .env("PATH", &extended_path)
         .spawn()
         .map_err(|e| format!("Failed to spawn claude: {}", e))?;
 

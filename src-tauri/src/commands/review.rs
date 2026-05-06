@@ -86,18 +86,24 @@ pub async fn start_review(
         args.push("Read,Glob,Grep".to_string());
     }
 
+    // Ensure PATH includes common locations for claude CLI
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    let home = std::env::var("HOME").unwrap_or_default();
+    let extended_path = format!("{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, path_env);
+
     let mut cmd = Command::new("claude");
     cmd.args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .env("PATH", &extended_path);
 
     if let Some(ref cwd) = worktree_path {
         cmd.current_dir(cwd);
     }
 
     let mut child = cmd.spawn()
-        .map_err(|e| format!("Failed to spawn claude: {}", e))?;
+        .map_err(|e| format!("Failed to spawn claude: {}. PATH={}", e, extended_path))?;
 
     // Write prompt to stdin then close it
     if let Some(mut stdin) = child.stdin.take() {
