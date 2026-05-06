@@ -55,7 +55,7 @@ export function IssuePill({ text, fileLine, onFileClick }: IssuePillProps) {
             <button
               type="button"
               onClick={handleFileClick}
-              className="text-[11px] font-mono text-accent hover:underline cursor-pointer mt-1 inline-block bg-transparent border-none p-0"
+              className="text-[12px] font-mono text-accent hover:underline cursor-pointer mt-1 inline-block bg-transparent border-none p-0"
             >
               {fileLine}
             </button>

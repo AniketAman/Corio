@@ -49,7 +49,7 @@ export function SecurityFindingCard({ finding, onFileClick }: SecurityFindingCar
           {finding.location && (
             <span
               onClick={handleFileClick}
-              className="text-[11px] font-mono text-accent hover:underline cursor-pointer mt-0.5 inline-block"
+              className="text-[12px] font-mono text-accent hover:underline cursor-pointer mt-0.5 inline-block"
             >
               {finding.location}
             </span>

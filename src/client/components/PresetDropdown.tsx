@@ -47,7 +47,7 @@ export function PresetDropdown() {
                   <span className={`w-1.5 h-1.5 rounded-full ${activePresetId === preset.id ? 'bg-accent' : 'bg-transparent border border-text-muted'}`} />
                   <span className="font-medium text-text-primary">{preset.name}</span>
                 </div>
-                <span className="text-[11px] text-text-muted ml-3.5">{preset.description}</span>
+                <span className="text-[12px] text-text-muted ml-3.5">{preset.description}</span>
               </DropdownMenuItem>
             ))}
             {custom.length > 0 && (
@@ -64,7 +64,7 @@ export function PresetDropdown() {
                       <span className={`w-1.5 h-1.5 rounded-full ${activePresetId === preset.id ? 'bg-accent' : 'bg-transparent border border-text-muted'}`} />
                       <span className="font-medium text-text-primary">{preset.name}</span>
                     </div>
-                    <span className="text-[11px] text-text-muted ml-3.5">{preset.description}</span>
+                    <span className="text-[12px] text-text-muted ml-3.5">{preset.description}</span>
                   </DropdownMenuItem>
                 ))}
               </>

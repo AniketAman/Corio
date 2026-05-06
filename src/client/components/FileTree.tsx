@@ -14,7 +14,7 @@ export function FileTree() {
 
   return (
     <div className="p-2 overflow-y-auto h-full">
-      <div className="text-[11px] uppercase tracking-wider text-text-muted font-medium px-2 py-1 mb-1">
+      <div className="text-[12px] uppercase tracking-wider text-text-muted font-medium px-2 py-1 mb-1">
         Changed ({prData.files.length})
       </div>
       {prData.files.map((file) => {
@@ -34,14 +34,14 @@ export function FileTree() {
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium truncate">{fileName}</span>
-              <div className="flex gap-1.5 text-[11px] shrink-0 ml-2">
+              <span className="text-[14px] font-medium truncate">{fileName}</span>
+              <div className="flex gap-1.5 text-[12px] shrink-0 ml-2">
                 <span className="text-success">+{file.additions}</span>
                 <span className="text-danger">-{file.deletions}</span>
               </div>
             </div>
             {dirPath && (
-              <div className="text-[11px] text-text-muted mt-0.5 truncate font-mono">
+              <div className="text-[12px] text-text-muted mt-0.5 truncate font-mono">
                 {dirPath}
               </div>
             )}

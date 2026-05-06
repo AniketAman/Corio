@@ -47,7 +47,7 @@ export function FindingCard({ finding, priority }: FindingCardProps) {
           {finding.fileLine && (
             <span
               onClick={(e) => { e.stopPropagation(); handleFileClick(); }}
-              className="text-[11px] font-mono text-accent hover:underline cursor-pointer mt-0.5 inline-block"
+              className="text-[12px] font-mono text-accent hover:underline cursor-pointer mt-0.5 inline-block"
             >
               {finding.fileLine}
             </span>
@@ -60,13 +60,13 @@ export function FindingCard({ finding, priority }: FindingCardProps) {
         <div className="px-3 pb-3 border-t border-border-subtle pt-2 ml-[42px] space-y-2">
           {finding.why && (
             <div>
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">Why it matters</span>
+              <span className="text-[11px] uppercase tracking-wider text-text-muted font-medium">Why it matters</span>
               <p className="text-xs text-text-secondary mt-0.5">{finding.why}</p>
             </div>
           )}
           {finding.fix && (
             <div>
-              <span className="text-[10px] uppercase tracking-wider text-text-muted font-medium">Suggested fix</span>
+              <span className="text-[11px] uppercase tracking-wider text-text-muted font-medium">Suggested fix</span>
               <p className="text-xs text-text-secondary mt-0.5 font-mono">{finding.fix}</p>
             </div>
           )}

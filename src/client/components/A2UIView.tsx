@@ -46,11 +46,11 @@ export function A2UIView({ onSwitchToClassic }: A2UIViewProps) {
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 mb-3">
-        <Badge variant="default" className="text-[10px]">Experimental</Badge>
-        <span className="text-[11px] text-text-muted">Interactive View</span>
+        <Badge variant="default" className="text-[11px]">Experimental</Badge>
+        <span className="text-[12px] text-text-muted">Interactive View</span>
         <button
           onClick={onSwitchToClassic}
-          className="ml-auto text-[11px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
+          className="ml-auto text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
         >
           Switch to Classic
         </button>

@@ -73,7 +73,7 @@ export function PresetEditor({ preset, onSave, onCancel }: PresetEditorProps) {
             Parse per-file markers (### FILE: path)
           </label>
         </div>
-        <p className="text-[11px] text-text-muted">
+        <p className="text-[12px] text-text-muted">
           Available placeholders: {'{{title}}'}, {'{{author}}'}, {'{{fileCount}}'}, {'{{additions}}'}, {'{{deletions}}'}, {'{{body}}'}, {'{{diff}}'}, {'{{fileInstructions}}'}, {'{{repoContext}}'}, {'{{repoToolHint}}'}
         </p>
       </div>

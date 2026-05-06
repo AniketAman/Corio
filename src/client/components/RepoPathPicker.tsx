@@ -44,9 +44,9 @@ export function RepoPathPicker({ owner, repo, onSelected, onSkip }: RepoPathPick
             Browse for Repository...
           </Button>
           {selectedPath && (
-            <p className="text-[11px] text-text-muted break-all bg-background rounded p-2">{selectedPath}</p>
+            <p className="text-[12px] text-text-muted break-all bg-background rounded p-2">{selectedPath}</p>
           )}
-          {error && <p className="text-[11px] text-danger">{error}</p>}
+          {error && <p className="text-[12px] text-danger">{error}</p>}
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <Button onClick={onSkip} size="sm" variant="ghost">Skip (Standalone)</Button>

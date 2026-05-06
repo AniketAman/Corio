@@ -59,7 +59,7 @@ export function TagPills({
             type="button"
             onClick={() => handleToggle(tag.id)}
             className={cn(
-              'rounded-full px-3 py-1 text-[11px] font-medium cursor-pointer transition-all border',
+              'rounded-full px-3 py-1 text-[12px] font-medium cursor-pointer transition-all border',
               isSelected
                 ? colorClasses[color]
                 : 'bg-surface-elevated border-border text-text-secondary hover:text-text-primary'

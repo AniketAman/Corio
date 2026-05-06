@@ -97,7 +97,7 @@ export function ResizablePanel({
         )}
       >
         <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
-          <span className="text-[11px] uppercase tracking-wider text-text-muted font-medium">{label}</span>
+          <span className="text-[12px] uppercase tracking-wider text-text-muted font-medium">{label}</span>
           <button
             onClick={onCollapse}
             title={`Collapse ${label || 'panel'}`}

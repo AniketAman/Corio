@@ -57,7 +57,7 @@ export function FileCard({
                 {fileName}
               </span>
               {directory && (
-                <span className="text-[11px] text-text-muted font-mono block truncate">
+                <span className="text-[12px] text-text-muted font-mono block truncate">
                   {directory}
                 </span>
               )}
@@ -65,10 +65,10 @@ export function FileCard({
 
             <div className="flex items-center gap-1.5 shrink-0">
               {additions != null && additions > 0 && (
-                <span className="text-[11px] text-success font-mono">+{additions}</span>
+                <span className="text-[12px] text-success font-mono">+{additions}</span>
               )}
               {deletions != null && deletions > 0 && (
-                <span className="text-[11px] text-danger font-mono">-{deletions}</span>
+                <span className="text-[12px] text-danger font-mono">-{deletions}</span>
               )}
             </div>
           </button>

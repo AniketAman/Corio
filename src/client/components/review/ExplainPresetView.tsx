@@ -153,7 +153,7 @@ export function ExplainPresetView({ explanation, fileExplanations, selectedFile 
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                     <span className="font-mono text-xs text-accent flex-1">{filePath}</span>
-                    <span className="text-[10px] text-text-muted uppercase tracking-wider">concepts</span>
+                    <span className="text-[11px] text-text-muted uppercase tracking-wider">concepts</span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="px-3 pb-3 pt-1 border-t border-border-subtle">

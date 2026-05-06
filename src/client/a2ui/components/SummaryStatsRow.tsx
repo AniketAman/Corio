@@ -55,7 +55,7 @@ export function SummaryStatsRow({
             >
               {stat.value}
             </div>
-            <div className="text-[11px] text-text-muted uppercase tracking-wider mt-0.5">
+            <div className="text-[12px] text-text-muted uppercase tracking-wider mt-0.5">
               {stat.label}
             </div>
           </div>

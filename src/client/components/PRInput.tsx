@@ -52,12 +52,12 @@ export function PRInput() {
         </Button>
 
         {isCachedReview && (
-          <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-medium">
+          <span className="text-[11px] px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-medium">
             Cached
           </span>
         )}
         {currentPrUrl && !loading && (
-          <button onClick={forceReReview} className="text-[11px] text-accent hover:text-accent-hover transition-colors">
+          <button onClick={forceReReview} className="text-[12px] text-accent hover:text-accent-hover transition-colors">
             Re-review
           </button>
         )}

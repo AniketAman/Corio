@@ -80,12 +80,12 @@ export function PresetManager({ onClose }: { onClose: () => void }) {
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium text-text-primary">{preset.name}</h3>
                   {preset.builtIn && (
-                    <span className="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded">
+                    <span className="text-[11px] px-1.5 py-0.5 bg-accent/20 text-accent rounded">
                       Built-in
                     </span>
                   )}
                   {preset.parseFileMarkers && (
-                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-elevated text-text-muted rounded">
+                    <span className="text-[11px] px-1.5 py-0.5 bg-surface-elevated text-text-muted rounded">
                       Per-file
                     </span>
                   )}
@@ -115,10 +115,10 @@ export function PresetManager({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <details className="mt-2">
-              <summary className="cursor-pointer text-[11px] text-text-muted hover:text-text-secondary">
+              <summary className="cursor-pointer text-[12px] text-text-muted hover:text-text-secondary">
                 View template
               </summary>
-              <pre className="mt-2 p-2 bg-background rounded text-[11px] text-text-secondary overflow-x-auto max-h-40 overflow-y-auto">
+              <pre className="mt-2 p-2 bg-background rounded text-[12px] text-text-secondary overflow-x-auto max-h-40 overflow-y-auto">
                 {preset.template}
               </pre>
             </details>

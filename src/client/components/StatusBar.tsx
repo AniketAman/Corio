@@ -17,7 +17,7 @@ function ThemeToggle() {
         <button
           key={opt.value}
           onClick={() => setTheme(opt.value)}
-          className={`px-2 py-0.5 rounded text-[11px] transition-colors ${
+          className={`px-2 py-0.5 rounded text-[12px] transition-colors ${
             theme === opt.value
               ? 'bg-accent text-white'
               : 'text-text-muted hover:text-text-secondary'

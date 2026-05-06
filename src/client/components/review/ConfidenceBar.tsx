@@ -22,9 +22,9 @@ export function ConfidenceBar({ score, className }: ConfidenceBarProps) {
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className="text-[10px] text-text-muted font-mono">{score}</span>
+      <span className="text-[11px] text-text-muted font-mono">{score}</span>
       <span className={cn(
-        'text-[10px] font-medium',
+        'text-[11px] font-medium',
         score >= 90 ? 'text-danger' : score >= 80 ? 'text-warning' : 'text-info'
       )}>
         {label}

@@ -106,10 +106,10 @@ export function ChatPanel() {
                     : 'bg-surface'
                 }`}
               >
-                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-medium">
+                <div className="text-[11px] uppercase tracking-wider text-text-muted mb-1 font-medium">
                   {msg.role === 'user' ? 'You' : 'Assistant'}
                 </div>
-                <div className="text-[13px] text-text-secondary prose-review">
+                <div className="text-[14px] text-text-secondary prose-review">
                   {msg.role === 'assistant' ? (
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   ) : (
@@ -120,11 +120,11 @@ export function ChatPanel() {
             ))}
             {streamingMessage && (
               <div className="p-2.5 rounded-[var(--radius-sm)] bg-surface opacity-90">
-                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1 font-medium flex items-center gap-1.5">
+                <div className="text-[11px] uppercase tracking-wider text-text-muted mb-1 font-medium flex items-center gap-1.5">
                   Assistant
                   <span className="w-1 h-1 rounded-full bg-accent animate-pulse" />
                 </div>
-                <div className="text-[13px] text-text-secondary prose-review">
+                <div className="text-[14px] text-text-secondary prose-review">
                   <ReactMarkdown>{streamingMessage}</ReactMarkdown>
                 </div>
               </div>

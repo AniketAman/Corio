@@ -102,7 +102,7 @@ export function ExplanationPanel() {
         {a2uiPayload && !a2uiActive && (
           <button
             onClick={() => setA2uiActive(true)}
-            className="mb-3 text-[11px] text-accent hover:text-accent-hover bg-transparent border border-accent/30 rounded-[var(--radius-sm)] px-3 py-1 cursor-pointer transition-colors"
+            className="mb-3 text-[12px] text-accent hover:text-accent-hover bg-transparent border border-accent/30 rounded-[var(--radius-sm)] px-3 py-1 cursor-pointer transition-colors"
           >
             ✦ Switch to Interactive View
           </button>
