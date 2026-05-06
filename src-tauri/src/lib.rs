@@ -18,6 +18,8 @@ pub fn run() {
             commands::config::save_config,
             commands::config::get_repo_path,
             commands::config::save_repo_path,
+            commands::worktree::create_worktree,
+            commands::worktree::remove_worktree,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
