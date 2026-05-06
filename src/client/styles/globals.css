@@ -156,11 +156,24 @@
   }
 }
 
+.pending-comment-highlight {
+  background-color: rgba(139, 92, 246, 0.08) !important;
+}
+
+.pending-comment-glyph {
+  background-color: #8b5cf6;
+  border-radius: 50%;
+  width: 8px !important;
+  height: 8px !important;
+  margin-left: 4px;
+  margin-top: 6px;
+}
+
 @layer components {
   .prose-review {
     font-size: 14px;
     line-height: 1.7;
-    color: var(--color-text-secondary);
+    color: var(--color-text-primary);
   }
   .prose-review h1,
   .prose-review h2,

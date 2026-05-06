@@ -1,12 +1,14 @@
 import { DiffEditor, DiffOnMount } from '@monaco-editor/react';
 import { useReview } from '../context/ReviewContext';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { tauriApi } from '../hooks/useTauriApi';
 import type { editor } from 'monaco-editor';
+import { createRoot } from 'react-dom/client';
+import { DiffCommentWidget } from './DiffCommentWidget';
 
 export function DiffViewer() {
-  const { prData, selectedFile, annotations, scrollToAnnotation } = useReview();
+  const { prData, selectedFile, annotations, scrollToAnnotation, addPendingComment, pendingReview } = useReview();
   const { resolved } = useTheme();
   const [original, setOriginal] = useState('');
   const [modified, setModified] = useState('');
@@ -14,6 +16,82 @@ export function DiffViewer() {
 
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const decorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
+  const pendingDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
+  const widgetRef = useRef<editor.IContentWidget | null>(null);
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const widgetRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
+
+  const getPrefillForLine = useCallback((line: number): string | undefined => {
+    if (!selectedFile) return undefined;
+    const lines = annotations[selectedFile] || [];
+    if (lines.includes(line)) {
+      return `Consider reviewing this line as it was referenced in the AI analysis.`;
+    }
+    return undefined;
+  }, [selectedFile, annotations]);
+
+  const removeWidget = useCallback(() => {
+    if (widgetRef.current && editorRef.current) {
+      const modifiedEditor = editorRef.current.getModifiedEditor();
+      modifiedEditor.removeContentWidget(widgetRef.current);
+      widgetRef.current = null;
+    }
+    if (widgetRootRef.current) {
+      widgetRootRef.current.unmount();
+      widgetRootRef.current = null;
+    }
+    if (widgetContainerRef.current) {
+      widgetContainerRef.current = null;
+    }
+  }, []);
+
+  const showCommentWidget = useCallback((line: number) => {
+    if (!editorRef.current || !selectedFile) return;
+
+    removeWidget();
+
+    const modifiedEditor = editorRef.current.getModifiedEditor();
+    const container = document.createElement('div');
+    widgetContainerRef.current = container;
+
+    const prefill = getPrefillForLine(line);
+
+    const root = createRoot(container);
+    widgetRootRef.current = root;
+
+    root.render(
+      <DiffCommentWidget
+        line={line}
+        filePath={selectedFile}
+        prefill={prefill}
+        onSubmit={(body) => {
+          addPendingComment({
+            body,
+            type: 'inline',
+            path: selectedFile,
+            line,
+            source: prefill ? 'finding' : 'manual',
+          });
+          removeWidget();
+        }}
+        onCancel={() => {
+          removeWidget();
+        }}
+      />
+    );
+
+    const widget: editor.IContentWidget = {
+      getId: () => 'diff-comment-widget',
+      getDomNode: () => container,
+      getPosition: () => ({
+        position: { lineNumber: line, column: 1 },
+        preference: [1], // BELOW
+      }),
+    };
+
+    widgetRef.current = widget;
+    modifiedEditor.addContentWidget(widget);
+  }, [selectedFile, addPendingComment, getPrefillForLine, removeWidget]);
 
   useEffect(() => {
     if (!prData || !selectedFile) {
@@ -72,6 +150,12 @@ export function DiffViewer() {
       const lineNumber = e.target.position?.lineNumber;
       if (!lineNumber) return;
 
+      // Handle glyph margin clicks (type 2 = GUTTER_GLYPH_MARGIN)
+      if (e.target.type === 2) {
+        showCommentWidget(lineNumber);
+        return;
+      }
+
       const lines = annotations[selectedFile] || [];
       if (lines.includes(lineNumber)) {
         scrollToAnnotation(selectedFile, lineNumber);
@@ -107,6 +191,43 @@ export function DiffViewer() {
 
     decorationsRef.current = modifiedEditor.createDecorationsCollection(decorations);
   }, [selectedFile, annotations]);
+
+  useEffect(() => {
+    if (!editorRef.current || !selectedFile) return;
+
+    const modifiedEditor = editorRef.current.getModifiedEditor();
+    const inlineComments = pendingReview.comments.filter(
+      (c) => c.type === 'inline' && c.path === selectedFile && c.line
+    );
+
+    if (pendingDecorationsRef.current) {
+      pendingDecorationsRef.current.clear();
+    }
+
+    if (inlineComments.length === 0) return;
+
+    const decorations: editor.IModelDeltaDecoration[] = inlineComments.map((comment) => ({
+      range: {
+        startLineNumber: comment.line!,
+        startColumn: 1,
+        endLineNumber: comment.line!,
+        endColumn: 1,
+      },
+      options: {
+        isWholeLine: true,
+        className: 'pending-comment-highlight',
+        glyphMarginClassName: 'pending-comment-glyph',
+        glyphMarginHoverMessage: { value: 'Pending review comment' },
+      },
+    }));
+
+    pendingDecorationsRef.current = modifiedEditor.createDecorationsCollection(decorations);
+  }, [selectedFile, pendingReview.comments]);
+
+  // Cleanup widget when file changes
+  useEffect(() => {
+    removeWidget();
+  }, [selectedFile, removeWidget]);
 
   if (!prData || !selectedFile) {
     return (
