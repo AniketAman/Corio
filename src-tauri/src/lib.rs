@@ -26,6 +26,8 @@ pub fn run() {
             commands::presets::save_preset,
             commands::presets::delete_preset,
             commands::review::start_review,
+            commands::chat::send_chat_message,
+            commands::a2ui::convert_to_a2ui,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
