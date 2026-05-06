@@ -9,13 +9,12 @@ export default defineConfig({
     outDir: '../../dist/client',
     emptyOutDir: true
   },
+  clearScreen: false,
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
-      }
+    strictPort: true,
+    watch: {
+      ignored: ['**/src-tauri/**']
     }
   }
 });
