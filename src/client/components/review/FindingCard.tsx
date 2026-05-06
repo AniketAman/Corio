@@ -18,7 +18,7 @@ interface FindingCardProps {
 
 export function FindingCard({ finding, priority }: FindingCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const { setSelectedFile } = useReview();
+  const { setSelectedFile, addPendingComment, removePendingComment, pendingReview } = useReview();
 
   const priorityConfig = {
     1: { label: 'P1', variant: 'danger' as const },
@@ -28,10 +28,59 @@ export function FindingCard({ finding, priority }: FindingCardProps) {
 
   const p = priorityConfig[priority];
 
+  // Generate stable findingId
+  const findingId = `${finding.fileLine || 'general'}-${finding.what.slice(0, 30)}`;
+
+  // Check if this finding already has a pending comment
+  const pendingComment = pendingReview.comments.find(c => c.findingId === findingId);
+
+  // Build comment body from finding
+  const buildCommentBody = () => {
+    let body = `**${finding.what}**`;
+    if (finding.why) {
+      body += `\n_Why:_ ${finding.why}`;
+    }
+    if (finding.fix) {
+      body += `\n_Fix:_ \`${finding.fix}\``;
+    }
+    return body;
+  };
+
   const handleFileClick = () => {
     if (finding.fileLine) {
       const filePath = finding.fileLine.split(':')[0];
       setSelectedFile(filePath);
+    }
+  };
+
+  const handleAddInline = () => {
+    if (!finding.fileLine) return;
+
+    const [path, lineStr] = finding.fileLine.split(':');
+    const line = parseInt(lineStr, 10);
+
+    addPendingComment({
+      body: buildCommentBody(),
+      type: 'inline',
+      path,
+      line,
+      source: 'finding',
+      findingId,
+    });
+  };
+
+  const handleAddGeneral = () => {
+    addPendingComment({
+      body: buildCommentBody(),
+      type: 'general',
+      source: 'finding',
+      findingId,
+    });
+  };
+
+  const handleRemovePending = () => {
+    if (pendingComment) {
+      removePendingComment(pendingComment.id);
     }
   };
 
@@ -72,6 +121,36 @@ export function FindingCard({ finding, priority }: FindingCardProps) {
           )}
         </div>
       )}
+
+      <div className="px-3 pb-2 border-t border-border-subtle pt-2 flex items-center gap-2">
+        {pendingComment ? (
+          <button
+            onClick={handleRemovePending}
+            className="text-[11px] px-2 py-1 rounded bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors cursor-pointer"
+            title="Remove from pending review"
+          >
+            Pending
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={handleAddInline}
+              disabled={!finding.fileLine}
+              className="text-[11px] px-2 py-1 rounded border border-border-subtle hover:bg-surface-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!finding.fileLine ? 'No file location available for inline comment' : 'Add as inline comment'}
+            >
+              Add inline
+            </button>
+            <button
+              onClick={handleAddGeneral}
+              className="text-[11px] px-2 py-1 rounded border border-border-subtle hover:bg-surface-hover transition-colors cursor-pointer"
+              title="Add as general comment"
+            >
+              Add as general
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
