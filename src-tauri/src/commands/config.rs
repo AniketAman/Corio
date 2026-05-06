@@ -17,6 +17,10 @@ pub struct ConfigDefaults {
     pub model: String,
     #[serde(default = "default_preset")]
     pub preset: String,
+    #[serde(default = "default_notifications_enabled")]
+    pub notifications_enabled: bool,
+    #[serde(default = "default_notification_sound")]
+    pub notification_sound: bool,
 }
 
 fn default_model() -> String {
@@ -27,11 +31,21 @@ fn default_preset() -> String {
     "review".to_string()
 }
 
+fn default_notifications_enabled() -> bool {
+    true
+}
+
+fn default_notification_sound() -> bool {
+    false
+}
+
 impl Default for ConfigDefaults {
     fn default() -> Self {
         Self {
             model: default_model(),
             preset: default_preset(),
+            notifications_enabled: default_notifications_enabled(),
+            notification_sound: default_notification_sound(),
         }
     }
 }

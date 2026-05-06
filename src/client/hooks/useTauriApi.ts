@@ -44,6 +44,8 @@ export interface Config {
   defaults: {
     model: string;
     preset: string;
+    notifications_enabled: boolean;
+    notification_sound: boolean;
   };
 }
 
