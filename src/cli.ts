@@ -4,6 +4,7 @@ import { startServer } from './server/index.js';
 import { spawn, execFile } from 'child_process';
 import { promisify } from 'util';
 import { killAllChildren } from './server/services/claude.js';
+import { killA2UIChildren } from './server/services/a2ui/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -12,6 +13,7 @@ interface CLIArgs {
   model?: string;
   noBrowser?: boolean;
   port?: number;
+  a2ui?: boolean;
 }
 
 function parseArgs(): CLIArgs | null {
@@ -28,6 +30,7 @@ Options:
   --model <model-id>    Claude model to use (default: claude-opus-4-6-20250925)
   --no-browser          Don't open browser automatically
   --port <port>         Use specific port (default: random available)
+  --a2ui                Enable A2UI interactive rendering
   --help, -h            Show this help message
 
 Examples:
@@ -49,6 +52,8 @@ Examples:
       parsed.noBrowser = true;
     } else if (arg === '--port' && args[i + 1]) {
       parsed.port = parseInt(args[++i], 10);
+    } else if (arg === '--a2ui') {
+      parsed.a2ui = true;
     }
   }
 
@@ -104,7 +109,7 @@ async function main() {
   const port = args.port || await findAvailablePort(3000);
   const server = await startServer(port);
 
-  const url = `http://localhost:${port}?pr=${encodeURIComponent(args.prUrl)}${args.model ? `&model=${args.model}` : ''}`;
+  const url = `http://localhost:${port}?pr=${encodeURIComponent(args.prUrl)}${args.model ? `&model=${args.model}` : ''}${args.a2ui ? '&a2ui=true' : ''}`;
 
   console.log(`\nCode Reviewer running at: ${url}\n`);
 
@@ -118,6 +123,7 @@ async function main() {
   const shutdown = () => {
     console.log('\nShutting down...');
     killAllChildren();
+    killA2UIChildren();
     const forceExitTimeout = setTimeout(() => {
       process.exit(1);
     }, 3000);

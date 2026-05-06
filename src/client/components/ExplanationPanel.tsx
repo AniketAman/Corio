@@ -5,12 +5,13 @@ import { StrictReviewView } from './review/StrictReviewView';
 import { ReviewPresetView } from './review/ReviewPresetView';
 import { ExplainPresetView } from './review/ExplainPresetView';
 import { SecurityPresetView } from './review/SecurityPresetView';
+import { A2UIView } from './A2UIView';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from './ui/collapsible';
 import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
 
 export function ExplanationPanel() {
-  const { explanation, fileExplanations, selectedFile, loading, activePresetId, highlightedAnnotation } = useReview();
+  const { explanation, fileExplanations, selectedFile, loading, activePresetId, highlightedAnnotation, a2uiEnabled, a2uiPayload, a2uiLoading } = useReview();
   const [viewMode, setViewMode] = useState<'file' | 'full'>('file');
   const [chatOpen, setChatOpen] = useState(false);
   const fileRef = useRef<HTMLDivElement>(null);
@@ -91,6 +92,11 @@ export function ExplanationPanel() {
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             Generating review...
           </div>
+        )}
+
+        {/* A2UI interactive view (experimental, behind --a2ui flag) */}
+        {a2uiEnabled && (a2uiPayload || a2uiLoading) && (
+          <A2UIView />
         )}
 
         {/* Preset-specific rich views */}

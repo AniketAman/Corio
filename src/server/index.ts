@@ -6,6 +6,7 @@ import { reviewRouter } from './routes/review.js';
 import { chatRouter } from './routes/chat.js';
 import { fileRouter } from './routes/file.js';
 import { presetsRouter } from './routes/presets.js';
+import { a2uiRouter } from './routes/a2ui.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,6 +22,7 @@ export function createServer() {
   app.use('/api', chatRouter);
   app.use('/api', fileRouter);
   app.use('/api', presetsRouter);
+  app.use('/api', a2uiRouter);
 
   // Serve static frontend in production
   const clientPath = join(__dirname, '../../client');
