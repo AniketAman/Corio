@@ -1,215 +1,167 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useReview } from '../context/ReviewContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
+import { useSettings, ModelId } from '../hooks/useSettings';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from './ui/dialog';
+import { PresetManager } from './PresetManager';
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const TEMPLATE_VARS = [
-  { name: '{{repoContext}}', desc: 'Repo mode context (auto-filled)' },
-  { name: '{{title}}', desc: 'PR title' },
-  { name: '{{author}}', desc: 'PR author' },
-  { name: '{{fileCount}}', desc: 'Number of files changed' },
-  { name: '{{additions}}', desc: 'Lines added' },
-  { name: '{{deletions}}', desc: 'Lines deleted' },
-  { name: '{{body}}', desc: 'PR description body' },
-  { name: '{{diff}}', desc: 'Full PR diff' },
-  { name: '{{fileInstructions}}', desc: 'Per-file section markers' },
-  { name: '{{repoToolHint}}', desc: 'Hint to use codebase tools (repo mode)' },
+type SettingsTab = 'general' | 'presets' | 'notifications';
+
+const MODELS: { id: ModelId; label: string; subtitle: string }[] = [
+  { id: 'opus', label: 'Opus', subtitle: 'Most capable' },
+  { id: 'sonnet', label: 'Sonnet', subtitle: 'Balanced' },
+  { id: 'haiku', label: 'Haiku', subtitle: 'Fast' },
 ];
 
-interface CustomPreset {
-  id?: string;
-  name: string;
-  description: string;
-  template: string;
-  parseFileMarkers: boolean;
+function GeneralTab() {
+  const { settings, updateSettings } = useSettings();
+  const { presets } = useReview();
+
+  return (
+    <div className="space-y-6 p-5">
+      <div>
+        <label className="text-[11px] font-medium text-text-muted uppercase tracking-wider block mb-2">
+          Review Model
+        </label>
+        <div className="flex gap-2">
+          {MODELS.map(m => (
+            <button
+              key={m.id}
+              onClick={() => updateSettings({ model: m.id })}
+              className={`flex-1 py-2.5 px-3 rounded-[var(--radius-sm)] text-center transition-all ${
+                settings.model === m.id
+                  ? 'border-2 border-accent bg-accent-subtle'
+                  : 'border border-border hover:border-border/80'
+              }`}
+            >
+              <div className={`text-[13px] font-semibold ${settings.model === m.id ? 'text-text-primary' : 'text-text-secondary'}`}>
+                {m.label}
+              </div>
+              <div className="text-[10px] text-text-muted mt-0.5">{m.subtitle}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[11px] font-medium text-text-muted uppercase tracking-wider block mb-2">
+          Default Preset
+        </label>
+        <select
+          value={settings.defaultPresetId}
+          onChange={e => updateSettings({ defaultPresetId: e.target.value })}
+          className="w-full h-9 px-3 bg-surface-elevated text-text-primary border border-border rounded-[var(--radius-sm)] text-sm focus:outline-none focus:ring-2 focus:ring-accent appearance-none cursor-pointer"
+        >
+          {presets.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 }
 
-export function SettingsModal({ open, onClose }: SettingsModalProps) {
-  const { presets } = useReview();
-  const [customPresets, setCustomPresets] = useState<CustomPreset[]>([]);
-  const [editing, setEditing] = useState<CustomPreset | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+function NotificationsTab() {
+  const { settings, updateSettings } = useSettings();
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
 
-  useEffect(() => {
-    if (!open) return;
-    setCustomPresets(presets.filter(p => !p.builtIn));
-  }, [open, presets]);
-
-  const handleSave = async () => {
-    if (!editing) return;
-    if (!editing.name.trim() || !editing.template.trim()) {
-      setStatus('Name and template are required');
-      return;
+  const handleToggleNotifications = async (enabled: boolean) => {
+    if (enabled && permissionStatus === 'default') {
+      const result = await Notification.requestPermission();
+      setPermissionStatus(result);
+      if (result === 'denied') return;
     }
-
-    try {
-      const method = editing.id ? 'PUT' : 'POST';
-      const url = editing.id ? `/api/presets/${editing.id}` : '/api/presets';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editing.name,
-          description: editing.description,
-          template: editing.template,
-          parseFileMarkers: editing.parseFileMarkers,
-        })
-      });
-
-      if (res.ok) {
-        setStatus('Saved');
-        setEditing(null);
-        const updated = await fetch('/api/presets').then(r => r.json());
-        setCustomPresets(updated.filter((p: any) => !p.builtIn));
-        setTimeout(() => setStatus(null), 2000);
-      } else {
-        setStatus('Failed to save');
-      }
-    } catch {
-      setStatus('Failed to save');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await fetch(`/api/presets/${id}`, { method: 'DELETE' });
-      setCustomPresets(prev => prev.filter(p => p.id !== id));
-    } catch {
-      setStatus('Failed to delete');
-    }
+    updateSettings({ notificationsEnabled: enabled });
   };
 
   return (
+    <div className="space-y-3 p-5">
+      <div className="flex items-center justify-between p-3 bg-surface-elevated rounded-[var(--radius)]">
+        <div>
+          <div className="text-[13px] font-medium text-text-primary">Review complete notifications</div>
+          <div className="text-[11px] text-text-muted mt-0.5">Get notified when AI review finishes</div>
+        </div>
+        <button
+          onClick={() => handleToggleNotifications(!settings.notificationsEnabled)}
+          className={`w-9 h-5 rounded-full relative transition-colors ${
+            settings.notificationsEnabled ? 'bg-accent' : 'bg-border'
+          }`}
+        >
+          <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
+            settings.notificationsEnabled ? 'translate-x-4' : 'translate-x-0.5'
+          }`} />
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between p-3 bg-surface-elevated rounded-[var(--radius)]">
+        <div>
+          <div className="text-[13px] font-medium text-text-primary">Notification sound</div>
+          <div className="text-[11px] text-text-muted mt-0.5">Play a sound when review completes</div>
+        </div>
+        <button
+          onClick={() => updateSettings({ notificationSound: !settings.notificationSound })}
+          className={`w-9 h-5 rounded-full relative transition-colors ${
+            settings.notificationSound ? 'bg-accent' : 'bg-border'
+          }`}
+        >
+          <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
+            settings.notificationSound ? 'translate-x-4' : 'translate-x-0.5'
+          }`} />
+        </button>
+      </div>
+
+      {permissionStatus === 'denied' && (
+        <div className="p-3 bg-warning-muted rounded-[var(--radius)] text-[12px] text-warning">
+          Notifications are blocked. Enable them in your system preferences to receive alerts.
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SettingsModal({ open, onClose }: SettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+
+  const tabs: { id: SettingsTab; label: string }[] = [
+    { id: 'general', label: 'General' },
+    { id: 'presets', label: 'Presets' },
+    { id: 'notifications', label: 'Notifications' },
+  ];
+
+  return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="w-[520px] max-h-[70vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Custom Presets</DialogTitle>
+          <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
 
-        <DialogBody className="flex-1 overflow-auto">
-          {editing ? (
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-text-secondary block mb-1.5">Name</label>
-                <input
-                  value={editing.name}
-                  onChange={e => setEditing({ ...editing, name: e.target.value })}
-                  className="w-full h-9 px-3 bg-surface-elevated text-text-primary border border-border rounded-[var(--radius-sm)] text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  placeholder="My Custom Preset"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-text-secondary block mb-1.5">Description</label>
-                <input
-                  value={editing.description}
-                  onChange={e => setEditing({ ...editing, description: e.target.value })}
-                  className="w-full h-9 px-3 bg-surface-elevated text-text-primary border border-border rounded-[var(--radius-sm)] text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  placeholder="Short description..."
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-text-secondary block mb-1.5">Template</label>
-                <Textarea
-                  value={editing.template}
-                  onChange={e => setEditing({ ...editing, template: e.target.value })}
-                  className="h-[300px] text-xs leading-relaxed"
-                  spellCheck={false}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={editing.parseFileMarkers}
-                  onChange={e => setEditing({ ...editing, parseFileMarkers: e.target.checked })}
-                  className="accent-accent"
-                  id="parseFileMarkers"
-                />
-                <label htmlFor="parseFileMarkers" className="text-xs text-text-secondary">
-                  Parse ### FILE: markers for per-file view
-                </label>
-              </div>
+        <div className="flex border-b border-border-subtle px-5">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-[12px] font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-              <details className="mt-3">
-                <summary className="text-xs text-accent cursor-pointer">
-                  Available template variables
-                </summary>
-                <div className="mt-2 p-3 bg-surface-elevated rounded-[var(--radius-sm)] text-xs space-y-1">
-                  {TEMPLATE_VARS.map(v => (
-                    <div key={v.name} className="flex gap-3">
-                      <code className="text-warning min-w-[160px]">{v.name}</code>
-                      <span className="text-text-muted">{v.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {customPresets.length === 0 ? (
-                <div className="text-center py-8 text-text-muted text-sm">
-                  No custom presets yet. Create one to get started.
-                </div>
-              ) : (
-                customPresets.map(preset => (
-                  <div
-                    key={preset.id}
-                    className="flex items-center justify-between p-3 bg-surface-elevated rounded-[var(--radius)] border border-border-subtle"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-text-primary">{preset.name}</div>
-                      <div className="text-xs text-text-muted mt-0.5">{preset.description}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditing(preset)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-danger hover:text-danger"
-                        onClick={() => preset.id && handleDelete(preset.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+        <DialogBody className="flex-1 overflow-auto p-0">
+          {activeTab === 'general' && <GeneralTab />}
+          {activeTab === 'presets' && <PresetManager onClose={onClose} />}
+          {activeTab === 'notifications' && <NotificationsTab />}
         </DialogBody>
-
-        <DialogFooter>
-          {status && (
-            <span className={`text-xs ${status === 'Saved' ? 'text-success' : 'text-danger'}`}>
-              {status}
-            </span>
-          )}
-          {editing ? (
-            <>
-              <Button variant="secondary" onClick={() => setEditing(null)}>Back</Button>
-              <Button onClick={handleSave}>Save Preset</Button>
-            </>
-          ) : (
-            <>
-              <Button variant="secondary" onClick={onClose}>Close</Button>
-              <Button onClick={() => setEditing({ name: '', description: '', template: '', parseFileMarkers: true })}>
-                New Preset
-              </Button>
-            </>
-          )}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
