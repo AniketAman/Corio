@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useReview } from '../context/ReviewContext';
-import { SettingsModal } from './SettingsModal';
 import { PresetDropdown } from './PresetDropdown';
 import { Button } from './ui/button';
 
 export function PRInput() {
   const [prUrl, setPrUrl] = useState('');
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const { loading, triggerReview, isCachedReview, forceReReview, currentPrUrl } = useReview();
+  const { loading, triggerReview, isCachedReview } = useReview();
   const autoTriggered = useRef(false);
 
   useEffect(() => {
@@ -56,25 +54,7 @@ export function PRInput() {
             Cached
           </span>
         )}
-        {currentPrUrl && !loading && (
-          <button onClick={forceReReview} className="text-[12px] text-accent hover:text-accent-hover transition-colors">
-            Re-review
-          </button>
-        )}
-
-        <Button
-          onClick={() => setSettingsOpen(true)}
-          variant="ghost"
-          size="icon"
-          title="Settings"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M6.5 1.75a.75.75 0 011.5 0V3h-1.5V1.75zM8 13h-1.5v1.25a.75.75 0 001.5 0V13zM14.25 7.5a.75.75 0 010 1.5H13v-1.5h1.25zM3 8H1.75a.75.75 0 000 1.5H3V8zM8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z" fill="currentColor"/>
-            <path d="M8 4a4 4 0 100 8 4 4 0 000-8zM5.5 8a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0z" fill="currentColor"/>
-          </svg>
-        </Button>
       </div>
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

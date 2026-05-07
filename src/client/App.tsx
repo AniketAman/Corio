@@ -9,6 +9,8 @@ import { ReviewPanelTabs } from './components/ReviewPanelTabs';
 import { StatusBar } from './components/StatusBar';
 import { ResizablePanel } from './components/ResizablePanel';
 import { TooltipProvider } from './components/ui/tooltip';
+import { ToastProvider } from './components/ToastProvider';
+import { SettingsModal } from './components/SettingsModal';
 
 function ErrorBanner() {
   const { error, setError } = useReview();
@@ -30,6 +32,7 @@ function ErrorBanner() {
 function MainLayout() {
   const [fileTreeCollapsed, setFileTreeCollapsed] = useState(false);
   const [explanationCollapsed, setExplanationCollapsed] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { tabs, activeTabId, activeTab, addTab, closeTab, setActiveTab } = useTabs();
 
   // Keyboard shortcuts for tab navigation
@@ -37,6 +40,10 @@ function MainLayout() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
 
+      if (isMeta && e.key === ',') {
+        e.preventDefault();
+        setSettingsOpen(true);
+      }
       if (isMeta && e.key === 't') {
         e.preventDefault();
         addTab();
@@ -117,18 +124,21 @@ function MainLayout() {
       )}
 
       <StatusBar />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
 
 export function App() {
   return (
-    <TooltipProvider>
-      <TabsProvider>
-        <ReviewProvider>
-          <MainLayout />
-        </ReviewProvider>
-      </TabsProvider>
-    </TooltipProvider>
+    <ToastProvider>
+      <TooltipProvider>
+        <TabsProvider>
+          <ReviewProvider>
+            <MainLayout />
+          </ReviewProvider>
+        </TabsProvider>
+      </TooltipProvider>
+    </ToastProvider>
   );
 }
