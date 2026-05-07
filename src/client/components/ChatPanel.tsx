@@ -4,11 +4,13 @@ import { useTabs } from '../context/TabsContext';
 import { tauriApi } from '../hooks/useTauriApi';
 import { Button } from './ui/button';
 import ReactMarkdown from 'react-markdown';
+import { useSettings } from '../hooks/useSettings';
 
 export function ChatPanel() {
   const [input, setInput] = useState('');
   const { chatHistory, addChatMessage, sessionId, setSessionId, explanation, prData } = useReview();
   const { activeTabId } = useTabs();
+  const { settings } = useSettings();
   const [sending, setSending] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
 
@@ -55,7 +57,7 @@ export function ChatPanel() {
           tabId,
           prData,
           diff,
-          'opus',
+          settings.model,
           'review',
           null
         );
@@ -80,7 +82,7 @@ export function ChatPanel() {
         setSending(false);
       });
 
-      await tauriApi.sendChatMessage(tabId, question, activeSessionId, 'opus', null);
+      await tauriApi.sendChatMessage(tabId, question, activeSessionId, settings.model, null);
     } catch (error) {
       console.error('Chat failed:', error);
       setStreamingMessage('');

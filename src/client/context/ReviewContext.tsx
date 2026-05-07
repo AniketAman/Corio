@@ -3,6 +3,7 @@ import { UnlistenFn } from '@tauri-apps/api/event';
 import { tauriApi, PRMetadata, Preset } from '../hooks/useTauriApi';
 import { RepoPathPicker } from '../components/RepoPathPicker';
 import { useTabs, ChatMessage, PendingComment, PendingReview } from './TabsContext';
+import { useSettings } from '../hooks/useSettings';
 
 export type { ChatMessage };
 
@@ -54,6 +55,7 @@ const ReviewContext = createContext<ReviewContextType | undefined>(undefined);
 
 export function ReviewProvider({ children }: { children: ReactNode }) {
   const { activeTabId, activeTab, updateTab } = useTabs();
+  const { settings } = useSettings();
 
   // Global state (not per-tab)
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -316,7 +318,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       });
 
       // 6. Start review
-      const model = 'opus'; // Default model
+      const model = settings.model;
       await tauriApi.startReview(tabId, pr, diff, model, presetId, worktreePath);
 
       // 7. Wait for review-complete event
