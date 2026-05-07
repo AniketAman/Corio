@@ -4,6 +4,7 @@ import { tauriApi, PRMetadata, Preset } from '../hooks/useTauriApi';
 import { RepoPathPicker } from '../components/RepoPathPicker';
 import { useTabs, ChatMessage, PendingComment, PendingReview } from './TabsContext';
 import { useSettings } from '../hooks/useSettings';
+import { useToast } from '../components/ToastProvider';
 
 export type { ChatMessage };
 
@@ -56,6 +57,7 @@ const ReviewContext = createContext<ReviewContextType | undefined>(undefined);
 export function ReviewProvider({ children }: { children: ReactNode }) {
   const { activeTabId, activeTab, updateTab } = useTabs();
   const { settings } = useSettings();
+  const { toast } = useToast();
 
   // Global state (not per-tab)
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -359,6 +361,21 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
           updateTab(tabId, { a2uiPayload: payload, a2uiLoading: false });
         } catch {
           updateTab(tabId, { a2uiError: 'A2UI conversion failed', a2uiLoading: false });
+        }
+      }
+
+      // 12. Notify review complete
+      if (settings.notificationsEnabled) {
+        const prTitle = pr.title;
+        if (document.hasFocus()) {
+          toast({ title: 'Review complete', description: prTitle, variant: 'success' });
+        } else {
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            new Notification('Review Complete', { body: prTitle });
+          }
+        }
+        if (settings.notificationSound) {
+          new Audio('/sounds/review-complete.mp3').play().catch(() => {});
         }
       }
     } catch (err: any) {
