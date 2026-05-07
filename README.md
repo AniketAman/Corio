@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src-tauri/icons/128x128@2x.png" width="128" height="128" alt="Code Reviewer">
+  <img src="src-tauri/icons/128x128@2x.png" width="128" height="128" alt="Corio">
 </p>
 
-<h1 align="center">Code Reviewer</h1>
+<h1 align="center">Corio</h1>
 
 <p align="center">
   AI-powered GitHub PR review desktop app built with Tauri + React.
@@ -36,7 +36,7 @@ Paste a GitHub PR URL, get a detailed AI review powered by Claude. Supports mult
 
 ```bash
 git clone <repo-url>
-cd code-reviewer
+cd corio
 npm install
 ```
 
@@ -61,7 +61,7 @@ This launches the app with hot-reload for both the frontend (Vite) and the Rust 
 npm run tauri:build
 ```
 
-Output: `src-tauri/target/release/bundle/macos/Code Reviewer.app`
+Output: `src-tauri/target/release/bundle/macos/Corio.app`
 
 ## Keyboard Shortcuts
 
