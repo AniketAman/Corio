@@ -128,6 +128,31 @@
   background: #d1d5db;
 }
 
+/* Firefox-style tabs */
+.tab-firefox {
+  border-radius: 8px 8px 0 0;
+  margin-top: 2px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  position: relative;
+}
+
+.tab-firefox-active {
+  border-color: var(--color-tab-border);
+  margin-bottom: -1px;
+  padding-bottom: 1px;
+}
+
+.tab-firefox-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-surface);
+}
+
 /* Monaco editor annotation decorations */
 .annotation-highlight {
   background: rgba(139, 92, 246, 0.08) !important;
