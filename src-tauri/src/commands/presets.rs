@@ -185,6 +185,51 @@ For each finding include: file:line, what the issue is, why it matters, suggeste
 
 {{repoToolHint}}"#;
 
+const REVIEWER_DISCIPLINE: &str = r#"
+
+---
+
+## Reviewer Discipline
+
+### Rules
+- **Acknowledge strengths first** — specific praise with file:line builds trust in the rest of the feedback
+- **Calibrate severity honestly** — not everything is Critical. Miscalibration erodes trust.
+- **Be specific** — every finding needs a `file:line` reference, what's wrong, why it matters, and a suggested fix
+- **High confidence only** — don't speculate. If you're unsure, say so rather than asserting.
+- **No vague feedback** — "improve error handling" is not a finding. Say what, where, and how.
+
+### Severity Definitions
+- **Critical:** Bugs, security vulnerabilities, data loss risks, broken functionality that must be fixed before merge
+- **Important:** Architecture problems, missing edge cases, poor error handling, test gaps that should be fixed
+- **Minor:** Style, naming, optimization opportunities, documentation polish — nice-to-have improvements
+
+### Reference Format
+Every finding, strength, or notable observation MUST include a `file:line` reference (e.g., `src/auth.rs:42`). These are parsed by the UI for inline annotations — they are not optional.
+
+### DO
+- Categorize by actual severity
+- Explain WHY each issue matters (not just what)
+- Give a clear verdict at the end
+- Note deviations from the PR description's stated intent
+
+### DON'T
+- Say "looks good" without reading every changed line
+- Mark nitpicks as Critical
+- Give feedback on code you didn't actually read
+- Skip the verdict
+
+## Verdict
+
+**Ready to merge:** Yes | With fixes | No
+**Reasoning:** [1-2 sentence technical assessment]
+"#;
+
+// ─── Public accessor for reviewer discipline ─────────────────────────────────
+
+pub fn reviewer_discipline() -> &'static str {
+    REVIEWER_DISCIPLINE
+}
+
 // ─── Built-in presets ────────────────────────────────────────────────────────
 
 fn built_in_presets() -> Vec<Preset> {

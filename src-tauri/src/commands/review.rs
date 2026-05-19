@@ -38,7 +38,7 @@ fn build_review_prompt(
         ""
     };
 
-    preset.template
+    let result = preset.template
         .replace("{{repoContext}}", repo_context)
         .replace("{{title}}", &pr.title)
         .replace("{{author}}", &pr.author)
@@ -48,7 +48,9 @@ fn build_review_prompt(
         .replace("{{body}}", if pr.body.is_empty() { "(No description provided)" } else { &pr.body })
         .replace("{{diff}}", diff)
         .replace("{{fileInstructions}}", &file_instructions)
-        .replace("{{repoToolHint}}", repo_tool_hint)
+        .replace("{{repoToolHint}}", repo_tool_hint);
+
+    format!("{}\n{}", result, crate::commands::presets::reviewer_discipline())
 }
 
 #[tauri::command]
@@ -90,14 +92,21 @@ pub async fn start_review(
     // Ensure PATH includes common locations for claude CLI
     let path_env = std::env::var("PATH").unwrap_or_default();
     let home = std::env::var("HOME").unwrap_or_default();
-    let extended_path = format!("{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, path_env);
+    let extended_path = format!("{}/.superset/bin:{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, home, path_env);
 
     let mut cmd = Command::new("claude");
     cmd.args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .env("PATH", &extended_path);
+        .env("PATH", &extended_path)
+        .env("HOME", &home);
+
+    for key in &["CLAUDE_CODE_USE_BEDROCK", "AWS_PROFILE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "ANTHROPIC_API_KEY"] {
+        if let Ok(val) = std::env::var(key) {
+            cmd.env(key, val);
+        }
+    }
 
     if let Some(ref cwd) = worktree_path {
         cmd.current_dir(cwd);
@@ -116,9 +125,26 @@ pub async fn start_review(
     let stdout = child.stdout.take()
         .ok_or_else(|| "Failed to capture stdout".to_string())?;
 
+    let stderr = child.stderr.take();
+
     // Shared session_id across threads
     let session_id = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
     let session_id_clone = session_id.clone();
+
+    // Drain stderr in a separate thread to prevent pipe buffer deadlock
+    let stderr_handle = stderr.map(|se| {
+        std::thread::spawn(move || {
+            let reader = BufReader::new(se);
+            let mut output = String::new();
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    output.push_str(&l);
+                    output.push('\n');
+                }
+            }
+            output
+        })
+    });
 
     // Spawn a background thread to read stdout and emit Tauri events
     let app_clone = app.clone();
@@ -132,6 +158,12 @@ pub async fn start_review(
             };
 
             if line.trim().is_empty() {
+                continue;
+            }
+
+            // Non-JSON lines from claude (errors, login prompts) — emit as chunks so user sees them
+            if !line.starts_with('{') {
+                let _ = app_clone.emit("review-chunk", serde_json::json!({ "tabId": tab_id_clone, "text": line }));
                 continue;
             }
 
