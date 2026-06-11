@@ -3,9 +3,7 @@ mod services;
 
 use services::paths;
 use tauri::Emitter;
-use tauri::Manager;
 use tauri::menu::{Menu, PredefinedMenuItem, Submenu};
-use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,14 +17,10 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             // --- Task 22: Native Menu Bar ---
             let app_handle = app.handle();
             build_native_menu(app_handle)?;
-
-            // --- Task 18: Global Keyboard Shortcut (Cmd+Shift+R) ---
-            register_global_shortcut(app)?;
 
             // --- Task 20: Deep Links ---
             register_deep_links(app)?;
@@ -108,23 +102,6 @@ fn build_native_menu(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::e
 
     let menu = Menu::with_items(app_handle, &[&app_menu, &edit_menu, &window_menu])?;
     app_handle.set_menu(menu)?;
-
-    Ok(())
-}
-
-/// Task 18: Register global keyboard shortcut Cmd+Shift+R
-fn register_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri_plugin_global_shortcut::ShortcutState;
-
-    let app_handle = app.handle().clone();
-    app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+R", move |_app, _shortcut, event| {
-        if event.state == ShortcutState::Pressed {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.set_focus();
-                let _ = window.unminimize();
-            }
-        }
-    })?;
 
     Ok(())
 }

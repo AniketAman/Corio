@@ -49,33 +49,82 @@ function parseFindings(text: string): ParsedReview['findings'] {
     if (!match) continue;
 
     const section = match[1];
-    const findings: ParsedFinding[] = [];
+    if (/^\s*None\.?\s*$/i.test(section)) continue;
 
-    const findingBlocks = section.split(/\n-\s+\*\*/).filter(Boolean);
-    for (const block of findingBlocks) {
-      const fileLineMatch = block.match(/(?:File:line|`?)([^\s`*]+:\d+)/);
-      const whatMatch = block.match(/\*\*What:\*\*\s*(.+)/i) || block.match(/^([^*\n]+)/);
-      const whyMatch = block.match(/\*\*Why[^:]*:\*\*\s*(.+)/i);
-      const fixMatch = block.match(/\*\*Fix:\*\*\s*(.+)/i);
-      const confidenceMatch = block.match(/\*\*Confidence:\*\*\s*(\d+)/i);
-
-      if (whatMatch) {
-        findings.push({
-          fileLine: fileLineMatch?.[1],
-          what: whatMatch[1].trim().replace(/\*\*/g, ''),
-          why: whyMatch?.[1]?.trim(),
-          fix: fixMatch?.[1]?.trim(),
-          confidence: confidenceMatch ? parseInt(confidenceMatch[1], 10) : 85,
-        });
-      }
-    }
-
+    const findings = parseFindingBlocks(section);
     if (findings.length > 0) {
       results.push({ priority, findings });
     }
   }
 
   return results;
+}
+
+// Match a `file/path.ext:123` reference, optionally wrapped in backticks.
+const FILE_LINE_RE = /`?([\w./\-]+\.\w+:\d+)`?/;
+
+// Pull the labelled fields (What/Why/Fix/Confidence) out of one finding's body.
+// Tolerates `- What:`, `**What:**`, `What -`, etc.
+function extractFields(block: string): Omit<ParsedFinding, 'fileLine'> | null {
+  const field = (label: string) => {
+    const re = new RegExp(`(?:^|\\n)\\s*[-*]?\\s*\\*{0,2}${label}\\*{0,2}\\s*[:\\-]\\s*(.+)`, 'i');
+    return block.match(re)?.[1]?.trim().replace(/\*\*/g, '');
+  };
+
+  const what = field('What');
+  const why = field('Why[^:\\-]*');
+  const fix = field('Fix');
+  const confidenceStr = field('Confidence');
+  const confidence = confidenceStr ? parseInt(confidenceStr, 10) : 85;
+
+  // Fall back to the first non-empty, non-field line as the summary.
+  let summary = what;
+  if (!summary) {
+    const firstLine = block
+      .split('\n')
+      .map(l => l.trim())
+      .find(l => l && !/^[-*]?\s*\*{0,2}(What|Why|Fix|Confidence)/i.test(l) && !FILE_LINE_RE.test(l) && !l.startsWith('#'));
+    summary = firstLine?.replace(/\*\*/g, '');
+  }
+
+  if (!summary) return null;
+  return { what: summary, why, fix, confidence: isNaN(confidence) ? 85 : confidence };
+}
+
+// Split a priority section into individual findings.
+// Primary format: each finding is a `#### file:line` heading. Falls back to the
+// older `- **…**` bullet grouping when no headings are present.
+function parseFindingBlocks(section: string): ParsedFinding[] {
+  const findings: ParsedFinding[] = [];
+
+  const headingSplit = section.split(/\n(?=#{2,4}\s)/).filter(b => b.trim());
+  const hasHeadings = headingSplit.some(b => /^#{2,4}\s/.test(b.trim()));
+
+  if (hasHeadings) {
+    for (const block of headingSplit) {
+      const trimmed = block.trim();
+      if (!/^#{2,4}\s/.test(trimmed)) continue;
+
+      const headingLine = trimmed.split('\n')[0];
+      const fileLine = headingLine.match(FILE_LINE_RE)?.[1]
+        ?? block.match(FILE_LINE_RE)?.[1];
+
+      const fields = extractFields(block);
+      if (!fields) continue;
+
+      findings.push({ fileLine, ...fields });
+    }
+    return findings;
+  }
+
+  // Fallback: legacy bullet-grouped findings, split on blank lines.
+  const blocks = section.split(/\n\s*\n/).filter(b => b.trim());
+  for (const block of blocks) {
+    const fileLine = block.match(FILE_LINE_RE)?.[1];
+    const fields = extractFields(block);
+    if (fields) findings.push({ fileLine, ...fields });
+  }
+  return findings;
 }
 
 function parseStrictReview(text: string): ParsedReview {
