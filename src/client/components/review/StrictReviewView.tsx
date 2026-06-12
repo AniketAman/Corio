@@ -60,15 +60,23 @@ function parseFindings(text: string): ParsedReview['findings'] {
   return results;
 }
 
-// Match a `file/path.ext:123` reference, optionally wrapped in backticks.
-const FILE_LINE_RE = /`?([\w./\-]+\.\w+:\d+)`?/;
+// Match a `file/path.ext:123` reference inside body text, optionally wrapped in
+// backticks or bold. Requires an extension to avoid matching field labels like
+// "Confidence: 85" or stray "line 12:3".
+const FILE_LINE_RE = /`?\*{0,2}([\w./\-]+\.\w+:\d+)\*{0,2}`?/;
+
+// A finding heading is a level-2..4 heading whose text is essentially just a
+// `path:line` reference (optionally backtick/bold wrapped). The path part does
+// NOT require an extension, so `Makefile:12` works. This deliberately excludes
+// severity sub-headings like "#### Critical (confidence 90–100)".
+const FINDING_HEADING_RE = /^#{2,4}\s+`?\*{0,2}([^\s`*]+:\d+)\*{0,2}`?\s*$/;
 
 // Pull the labelled fields (What/Why/Fix/Confidence) out of one finding's body.
 // Tolerates `- What:`, `**What:**`, `What -`, etc.
 function extractFields(block: string): Omit<ParsedFinding, 'fileLine'> | null {
   const field = (label: string) => {
     const re = new RegExp(`(?:^|\\n)\\s*[-*]?\\s*\\*{0,2}${label}\\*{0,2}\\s*[:\\-]\\s*(.+)`, 'i');
-    return block.match(re)?.[1]?.trim().replace(/\*\*/g, '');
+    return block.match(re)?.[1]?.replace(/\*\*/g, '').trim();
   };
 
   const what = field('What');
@@ -91,36 +99,60 @@ function extractFields(block: string): Omit<ParsedFinding, 'fileLine'> | null {
   return { what: summary, why, fix, confidence: isNaN(confidence) ? 85 : confidence };
 }
 
+// Is this line a `#### file:line` finding heading (and not a severity heading
+// like "#### Critical (confidence 90–100)")?
+function findingHeadingRef(line: string): string | undefined {
+  return line.trim().match(FINDING_HEADING_RE)?.[1];
+}
+
 // Split a priority section into individual findings.
-// Primary format: each finding is a `#### file:line` heading. Falls back to the
-// older `- **…**` bullet grouping when no headings are present.
+// Primary format: each finding is a `#### file:line` heading. Falls back to
+// splitting on repeated File:line/Location markers, then blank lines, for the
+// legacy `- **…**` bullet format.
 function parseFindingBlocks(section: string): ParsedFinding[] {
-  const findings: ParsedFinding[] = [];
+  const lines = section.split('\n');
 
-  const headingSplit = section.split(/\n(?=#{2,4}\s)/).filter(b => b.trim());
-  const hasHeadings = headingSplit.some(b => /^#{2,4}\s/.test(b.trim()));
-
-  if (hasHeadings) {
-    for (const block of headingSplit) {
-      const trimmed = block.trim();
-      if (!/^#{2,4}\s/.test(trimmed)) continue;
-
-      const headingLine = trimmed.split('\n')[0];
-      const fileLine = headingLine.match(FILE_LINE_RE)?.[1]
-        ?? block.match(FILE_LINE_RE)?.[1];
-
-      const fields = extractFields(block);
-      if (!fields) continue;
-
-      findings.push({ fileLine, ...fields });
-    }
-    return findings;
+  // Primary: group by finding headings. Only enter heading mode when at least
+  // one heading line is itself a file:line ref — severity sub-headings alone
+  // must NOT trigger this path.
+  if (lines.some(l => findingHeadingRef(l))) {
+    return splitByDelimiter(lines, l => findingHeadingRef(l) !== undefined);
   }
 
-  // Fallback: legacy bullet-grouped findings, split on blank lines.
+  // Legacy fallback: findings are often back-to-back with no blank line, so
+  // split on the recurring File:line / Location marker that opens each finding.
+  const legacyMarker = /^\s*[-*]?\s*\*{0,2}(?:File:line|Location)\*{0,2}/i;
+  if (lines.filter(l => legacyMarker.test(l)).length > 1) {
+    return splitByDelimiter(lines, l => legacyMarker.test(l));
+  }
+
+  // Last resort: split on blank lines.
   const blocks = section.split(/\n\s*\n/).filter(b => b.trim());
+  const findings: ParsedFinding[] = [];
   for (const block of blocks) {
-    const fileLine = block.match(FILE_LINE_RE)?.[1];
+    const fields = extractFields(block);
+    if (fields) findings.push({ fileLine: block.match(FILE_LINE_RE)?.[1], ...fields });
+  }
+  return findings;
+}
+
+// Accumulate lines into blocks, starting a new block each time `isStart` matches.
+function splitByDelimiter(lines: string[], isStart: (line: string) => boolean): ParsedFinding[] {
+  const blocks: string[] = [];
+  let current: string[] = [];
+  for (const line of lines) {
+    if (isStart(line) && current.length > 0) {
+      blocks.push(current.join('\n'));
+      current = [];
+    }
+    current.push(line);
+  }
+  if (current.length > 0) blocks.push(current.join('\n'));
+
+  const findings: ParsedFinding[] = [];
+  for (const block of blocks) {
+    const headingLine = block.split('\n')[0];
+    const fileLine = findingHeadingRef(headingLine) ?? block.match(FILE_LINE_RE)?.[1];
     const fields = extractFields(block);
     if (fields) findings.push({ fileLine, ...fields });
   }
