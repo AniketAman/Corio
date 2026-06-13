@@ -49,33 +49,114 @@ function parseFindings(text: string): ParsedReview['findings'] {
     if (!match) continue;
 
     const section = match[1];
-    const findings: ParsedFinding[] = [];
+    if (/^\s*None\.?\s*$/i.test(section)) continue;
 
-    const findingBlocks = section.split(/\n-\s+\*\*/).filter(Boolean);
-    for (const block of findingBlocks) {
-      const fileLineMatch = block.match(/(?:File:line|`?)([^\s`*]+:\d+)/);
-      const whatMatch = block.match(/\*\*What:\*\*\s*(.+)/i) || block.match(/^([^*\n]+)/);
-      const whyMatch = block.match(/\*\*Why[^:]*:\*\*\s*(.+)/i);
-      const fixMatch = block.match(/\*\*Fix:\*\*\s*(.+)/i);
-      const confidenceMatch = block.match(/\*\*Confidence:\*\*\s*(\d+)/i);
-
-      if (whatMatch) {
-        findings.push({
-          fileLine: fileLineMatch?.[1],
-          what: whatMatch[1].trim().replace(/\*\*/g, ''),
-          why: whyMatch?.[1]?.trim(),
-          fix: fixMatch?.[1]?.trim(),
-          confidence: confidenceMatch ? parseInt(confidenceMatch[1], 10) : 85,
-        });
-      }
-    }
-
+    const findings = parseFindingBlocks(section);
     if (findings.length > 0) {
       results.push({ priority, findings });
     }
   }
 
   return results;
+}
+
+// Match a `file/path.ext:123` reference inside body text, optionally wrapped in
+// backticks or bold. Requires an extension to avoid matching field labels like
+// "Confidence: 85" or stray "line 12:3".
+const FILE_LINE_RE = /`?\*{0,2}([\w./\-]+\.\w+:\d+)\*{0,2}`?/;
+
+// A finding heading is a level-2..4 heading whose text is essentially just a
+// `path:line` reference (optionally backtick/bold wrapped). The path part does
+// NOT require an extension, so `Makefile:12` works. This deliberately excludes
+// severity sub-headings like "#### Critical (confidence 90–100)".
+const FINDING_HEADING_RE = /^#{2,4}\s+`?\*{0,2}([^\s`*]+:\d+)\*{0,2}`?\s*$/;
+
+// Pull the labelled fields (What/Why/Fix/Confidence) out of one finding's body.
+// Tolerates `- What:`, `**What:**`, `What -`, etc.
+function extractFields(block: string): Omit<ParsedFinding, 'fileLine'> | null {
+  const field = (label: string) => {
+    const re = new RegExp(`(?:^|\\n)\\s*[-*]?\\s*\\*{0,2}${label}\\*{0,2}\\s*[:\\-]\\s*(.+)`, 'i');
+    return block.match(re)?.[1]?.replace(/\*\*/g, '').trim();
+  };
+
+  const what = field('What');
+  const why = field('Why[^:\\-]*');
+  const fix = field('Fix');
+  const confidenceStr = field('Confidence');
+  const confidence = confidenceStr ? parseInt(confidenceStr, 10) : 85;
+
+  // Fall back to the first non-empty, non-field line as the summary.
+  let summary = what;
+  if (!summary) {
+    const firstLine = block
+      .split('\n')
+      .map(l => l.trim())
+      .find(l => l && !/^[-*]?\s*\*{0,2}(What|Why|Fix|Confidence)/i.test(l) && !FILE_LINE_RE.test(l) && !l.startsWith('#'));
+    summary = firstLine?.replace(/\*\*/g, '');
+  }
+
+  if (!summary) return null;
+  return { what: summary, why, fix, confidence: isNaN(confidence) ? 85 : confidence };
+}
+
+// Is this line a `#### file:line` finding heading (and not a severity heading
+// like "#### Critical (confidence 90–100)")?
+function findingHeadingRef(line: string): string | undefined {
+  return line.trim().match(FINDING_HEADING_RE)?.[1];
+}
+
+// Split a priority section into individual findings.
+// Primary format: each finding is a `#### file:line` heading. Falls back to
+// splitting on repeated File:line/Location markers, then blank lines, for the
+// legacy `- **…**` bullet format.
+function parseFindingBlocks(section: string): ParsedFinding[] {
+  const lines = section.split('\n');
+
+  // Primary: group by finding headings. Only enter heading mode when at least
+  // one heading line is itself a file:line ref — severity sub-headings alone
+  // must NOT trigger this path.
+  if (lines.some(l => findingHeadingRef(l))) {
+    return splitByDelimiter(lines, l => findingHeadingRef(l) !== undefined);
+  }
+
+  // Legacy fallback: findings are often back-to-back with no blank line, so
+  // split on the recurring File:line / Location marker that opens each finding.
+  const legacyMarker = /^\s*[-*]?\s*\*{0,2}(?:File:line|Location)\*{0,2}/i;
+  if (lines.filter(l => legacyMarker.test(l)).length > 1) {
+    return splitByDelimiter(lines, l => legacyMarker.test(l));
+  }
+
+  // Last resort: split on blank lines.
+  const blocks = section.split(/\n\s*\n/).filter(b => b.trim());
+  const findings: ParsedFinding[] = [];
+  for (const block of blocks) {
+    const fields = extractFields(block);
+    if (fields) findings.push({ fileLine: block.match(FILE_LINE_RE)?.[1], ...fields });
+  }
+  return findings;
+}
+
+// Accumulate lines into blocks, starting a new block each time `isStart` matches.
+function splitByDelimiter(lines: string[], isStart: (line: string) => boolean): ParsedFinding[] {
+  const blocks: string[] = [];
+  let current: string[] = [];
+  for (const line of lines) {
+    if (isStart(line) && current.length > 0) {
+      blocks.push(current.join('\n'));
+      current = [];
+    }
+    current.push(line);
+  }
+  if (current.length > 0) blocks.push(current.join('\n'));
+
+  const findings: ParsedFinding[] = [];
+  for (const block of blocks) {
+    const headingLine = block.split('\n')[0];
+    const fileLine = findingHeadingRef(headingLine) ?? block.match(FILE_LINE_RE)?.[1];
+    const fields = extractFields(block);
+    if (fields) findings.push({ fileLine, ...fields });
+  }
+  return findings;
 }
 
 function parseStrictReview(text: string): ParsedReview {
