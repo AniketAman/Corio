@@ -142,6 +142,18 @@ const STRICT_TEMPLATE: &str = r#"You are performing a strict, priority-ordered c
 
 Review with strict standards. Only report findings with confidence >= 80/100. Use the PR description as the author's plan — verify the implementation aligns with it.
 
+## Finding format (IMPORTANT — read carefully)
+
+Every finding MUST be written as a level-4 heading whose text is ONLY the `file:line`, followed by exactly four labelled lines. Do NOT bold the heading. Do NOT split a single finding across multiple top-level bullets. Repeat this block once per finding:
+
+#### path/to/file.ext:123
+- What: one concise sentence describing the issue
+- Why: one sentence on why it matters
+- Fix: one sentence (or short code snippet) suggesting the fix
+- Confidence: 85
+
+Every finding must have a real `file:line`. Keep What/Why/Fix to one line each.
+
 ## Output Format
 
 Use EXACTLY this structure:
@@ -156,18 +168,13 @@ Against: PR description (author's stated intent)
 ## Findings
 
 ### Priority 1 — Correctness & Performance
-
-#### Critical (confidence 90–100)
-[findings — if none, write "None"]
-
-#### Important (confidence 80–89)
-[findings — if none, write "None"]
+[findings in the Finding format above — if none, write "None"]
 
 ### Priority 2 — Code Duplication & Conventions
-[findings — if none, write "None"]
+[findings in the Finding format above — if none, write "None"]
 
 ### Priority 3 — Test Coverage
-[findings — if none, write "None"]
+[findings in the Finding format above — if none, write "None"]
 
 ## Mandatory Checks
 - **Code Duplication:** [result]
@@ -178,10 +185,6 @@ Against: PR description (author's stated intent)
 ## Assessment
 **Ready to merge:** Yes | With fixes | No
 **Reasoning:** [1-2 sentence verdict]
-
----
-
-For each finding include: file:line, what the issue is, why it matters, suggested fix, and confidence N/100.
 
 {{repoToolHint}}"#;
 
