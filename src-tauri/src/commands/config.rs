@@ -24,7 +24,7 @@ pub struct ConfigDefaults {
 }
 
 fn default_model() -> String {
-    "claude-opus-4-6-20250925".to_string()
+    "claude-sonnet-4-6-20250514".to_string()
 }
 
 fn default_preset() -> String {
