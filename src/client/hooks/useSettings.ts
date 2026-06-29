@@ -22,7 +22,7 @@ const FULL_TO_MODEL: Record<string, ModelId> = Object.fromEntries(
 
 function configToSettings(config: Config): Settings {
   const fullModel = config.defaults.model;
-  const model = FULL_TO_MODEL[fullModel] ?? 'opus';
+  const model = FULL_TO_MODEL[fullModel] ?? 'sonnet';
   return {
     model,
     defaultPresetId: config.defaults.preset,
@@ -33,7 +33,7 @@ function configToSettings(config: Config): Settings {
 
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>({
-    model: 'opus',
+    model: 'sonnet',
     defaultPresetId: 'review',
     notificationsEnabled: true,
     notificationSound: false,
