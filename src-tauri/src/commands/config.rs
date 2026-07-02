@@ -23,8 +23,11 @@ pub struct ConfigDefaults {
     pub notification_sound: bool,
 }
 
+// Single source of truth for the default model alias. Update this one line
+// to change the default (the `claude` CLI resolves "opus"/"sonnet"/"haiku"
+// to its latest model of that tier).
 fn default_model() -> String {
-    "claude-sonnet-4-6-20250514".to_string()
+    "sonnet".to_string()
 }
 
 fn default_preset() -> String {

@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { tauriApi, Config } from './useTauriApi';
 
+// The `claude` CLI resolves these aliases to its latest model of that tier —
+// the actual model name lives only in the Rust default (config.rs
+// `default_model`) and whatever is saved in config.json. No version string
+// is duplicated here.
 export type ModelId = 'opus' | 'sonnet' | 'haiku';
 
 export interface Settings {
@@ -10,21 +14,9 @@ export interface Settings {
   notificationSound: boolean;
 }
 
-const MODEL_TO_FULL: Record<ModelId, string> = {
-  opus: 'claude-opus-4-6-20250925',
-  sonnet: 'claude-sonnet-4-6-20250514',
-  haiku: 'claude-haiku-4-5-20251001',
-};
-
-const FULL_TO_MODEL: Record<string, ModelId> = Object.fromEntries(
-  Object.entries(MODEL_TO_FULL).map(([k, v]) => [v, k as ModelId])
-);
-
 function configToSettings(config: Config): Settings {
-  const fullModel = config.defaults.model;
-  const model = FULL_TO_MODEL[fullModel] ?? 'sonnet';
   return {
-    model,
+    model: config.defaults.model as ModelId,
     defaultPresetId: config.defaults.preset,
     notificationsEnabled: config.defaults.notifications_enabled,
     notificationSound: config.defaults.notification_sound,
@@ -58,7 +50,7 @@ export function useSettings() {
       ...config,
       defaults: {
         ...config.defaults,
-        model: MODEL_TO_FULL[next.model],
+        model: next.model,
         preset: next.defaultPresetId,
         notifications_enabled: next.notificationsEnabled,
         notification_sound: next.notificationSound,
