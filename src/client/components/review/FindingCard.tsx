@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ConfidenceBar } from './ConfidenceBar';
 import { Badge } from '../ui/badge';
 import { useReview } from '../../context/ReviewContext';
+import { formatConventionalComment } from '../../utils/conventionalComments';
 
 interface Finding {
   fileLine?: string;
@@ -36,14 +37,11 @@ export function FindingCard({ finding, priority }: FindingCardProps) {
 
   // Build comment body from finding
   const buildCommentBody = () => {
-    let body = `**${finding.what}**`;
-    if (finding.why) {
-      body += `\n_Why:_ ${finding.why}`;
-    }
-    if (finding.fix) {
-      body += `\n_Fix:_ \`${finding.fix}\``;
-    }
-    return body;
+    return formatConventionalComment(priority, {
+      what: finding.what,
+      why: finding.why,
+      fix: finding.fix,
+    });
   };
 
   const handleFileClick = () => {
