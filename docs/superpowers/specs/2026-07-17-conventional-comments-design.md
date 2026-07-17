@@ -121,3 +121,31 @@ let safe_input = sanitize_sql(&user_input);
 **Confidence scores:**
 - Not included in inline comments
 - Still visible in the UI's FindingCard component
+
+## Implementation
+
+**Completed:** 2026-07-17
+
+**Files:**
+- `src/client/utils/conventionalComments.ts` — Formatter utility
+- `src/client/components/review/FindingCard.tsx` — Integration point
+
+**Function:**
+```typescript
+formatConventionalComment(
+  priority: 1 | 2 | 3,
+  finding: { what: string; why?: string; fix?: string }
+): string
+```
+
+**Behavior:**
+- Priority 1 → `issue:` label
+- Priority 2/3 → `suggestion:` label
+- Combines Why and Fix into flowing prose body
+- Handles missing Why/Fix gracefully
+- Preserves code block formatting
+
+**Testing:**
+- Edge cases verified manually via UI
+- All priority mappings tested
+- Both inline and general comments formatted
