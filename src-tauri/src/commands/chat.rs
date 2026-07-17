@@ -30,14 +30,21 @@ pub async fn send_chat_message(
     // Ensure PATH includes common locations for claude CLI
     let path_env = std::env::var("PATH").unwrap_or_default();
     let home = std::env::var("HOME").unwrap_or_default();
-    let extended_path = format!("{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, path_env);
+    let extended_path = format!("{}/.superset/bin:{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, home, path_env);
 
     let mut cmd = Command::new("claude");
     cmd.args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .env("PATH", &extended_path);
+        .env("PATH", &extended_path)
+        .env("HOME", &home);
+
+    for key in &["CLAUDE_CODE_USE_BEDROCK", "AWS_PROFILE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "ANTHROPIC_API_KEY"] {
+        if let Ok(val) = std::env::var(key) {
+            cmd.env(key, val);
+        }
+    }
 
     if let Some(ref cwd) = worktree_path {
         cmd.current_dir(cwd);

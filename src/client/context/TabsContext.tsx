@@ -33,6 +33,7 @@ export interface TabState {
   chatHistory: ChatMessage[];
   loading: boolean;
   error: string | null;
+  diff: string;
   annotations: Record<string, number[]>;
   highlightedAnnotation: { file: string; line: number } | null;
   a2uiPayload: object[] | null;
@@ -72,6 +73,7 @@ const createDefaultTabState = (id: string, prUrl?: string): TabState => {
     chatHistory: [],
     loading: false,
     error: null,
+    diff: '',
     annotations: {},
     highlightedAnnotation: null,
     a2uiPayload: null,

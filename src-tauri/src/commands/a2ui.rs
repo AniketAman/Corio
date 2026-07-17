@@ -51,15 +51,23 @@ pub async fn convert_to_a2ui(review_text: String) -> Result<Vec<serde_json::Valu
 
     let path_env = std::env::var("PATH").unwrap_or_default();
     let home = std::env::var("HOME").unwrap_or_default();
-    let extended_path = format!("{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, path_env);
+    let extended_path = format!("{}/.superset/bin:{}/.local/bin:{}/.cargo/bin:/usr/local/bin:/opt/homebrew/bin:{}", home, home, home, path_env);
 
-    let mut child = Command::new("claude")
-        .args(&["-p", "--model", "haiku", "--output-format", "json"])
+    let mut cmd = Command::new("claude");
+    cmd.args(&["-p", "--model", "haiku", "--output-format", "json"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env("PATH", &extended_path)
-        .spawn()
+        .env("HOME", &home);
+
+    for key in &["CLAUDE_CODE_USE_BEDROCK", "AWS_PROFILE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "ANTHROPIC_API_KEY"] {
+        if let Ok(val) = std::env::var(key) {
+            cmd.env(key, val);
+        }
+    }
+
+    let mut child = cmd.spawn()
         .map_err(|e| format!("Failed to spawn claude: {}", e))?;
 
     if let Some(mut stdin) = child.stdin.take() {

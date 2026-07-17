@@ -81,10 +81,18 @@ pub async fn submit_review(
         )?;
 
         if output.exit_code != 0 {
+            // gh prints the actual GitHub API error body (with the real
+            // failure reason, e.g. an invalid diff line) to stdout; stderr
+            // only has a generic "gh: <message> (HTTP <code>)" summary.
+            let detail = if !output.stdout.trim().is_empty() {
+                &output.stdout
+            } else {
+                &output.stderr
+            };
             return Err(format!(
                 "gh command failed (exit {}): {}",
                 output.exit_code,
-                output.stderr
+                detail
             ));
         }
 

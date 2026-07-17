@@ -1,9 +1,3 @@
-interface Finding {
-  what: string;
-  why?: string;
-  fix?: string;
-}
-
 /**
  * Maps strict mode priority to Conventional Comments label.
  */
@@ -25,15 +19,13 @@ function priorityToLabel(priority: 1 | 2 | 3): string {
  */
 export function formatConventionalComment(
   priority: 1 | 2 | 3,
-  finding: Finding
+  finding: { what: string; why?: string; fix?: string }
 ): string {
   const label = priorityToLabel(priority);
 
   // Label line: ensure What ends with a period
   const what = finding.what.trim();
-  const whatWithPeriod = what.endsWith('.') || what.endsWith('?') || what.endsWith('!')
-    ? what
-    : `${what}.`;
+  const whatWithPeriod = what.endsWith('.') ? what : `${what}.`;
 
   const labelLine = `${label}: ${whatWithPeriod}`;
 

@@ -29,8 +29,8 @@ Paste a GitHub PR URL, get a detailed AI review powered by Claude. Supports mult
 
 - [Node.js](https://nodejs.org/) v18+
 - [Rust](https://www.rust-lang.org/tools/install) (stable toolchain)
-- A GitHub personal access token (for PR API access)
-- An Anthropic API key (for Claude)
+- [GitHub CLI](https://cli.github.com/) (`gh`) — authenticated via `gh auth login`
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) — authenticated (used as the AI backend)
 
 ## Setup
 
@@ -40,11 +40,10 @@ cd corio
 npm install
 ```
 
-Create a `.env` file in the project root:
+Authenticate the GitHub CLI if you haven't already:
 
-```
-GITHUB_TOKEN=ghp_your_token_here
-ANTHROPIC_API_KEY=sk-ant-your_key_here
+```bash
+gh auth login
 ```
 
 ## Development

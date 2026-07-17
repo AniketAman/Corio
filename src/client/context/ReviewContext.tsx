@@ -1,10 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { tauriApi, PRMetadata, Preset } from '../hooks/useTauriApi';
 import { RepoPathPicker } from '../components/RepoPathPicker';
 import { useTabs, ChatMessage, PendingComment, PendingReview } from './TabsContext';
 import { useSettings } from '../hooks/useSettings';
 import { useToast } from '../components/ToastProvider';
+import { parseDiffLines } from '../utils/diffHunks';
 
 export type { ChatMessage };
 
@@ -34,6 +35,7 @@ interface ReviewContextType {
   setActivePresetId: (id: string) => void;
   presets: Preset[];
   annotations: Record<string, number[]>;
+  diffLines: Record<string, Set<number>>;
   highlightedAnnotation: { file: string; line: number } | null;
   scrollToAnnotation: (file: string, line: number) => void;
   triggerA2UI: () => void;
@@ -84,6 +86,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const currentPrUrl = activeTab.prUrl;
   const activePresetId = activeTab.activePresetId;
   const annotations = activeTab.annotations;
+  const diffLines = useMemo(() => parseDiffLines(activeTab.diff), [activeTab.diff]);
   const highlightedAnnotation = activeTab.highlightedAnnotation;
   const a2uiPayload = activeTab.a2uiPayload;
   const a2uiLoading = activeTab.a2uiLoading;
@@ -203,6 +206,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       prData: null,
       explanation: '',
       fileExplanations: {},
+      diff: '',
       annotations: {},
       highlightedAnnotation: null,
       error: null,
@@ -241,10 +245,12 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
           const reviewText = cached.reviewText;
           const fileMap = parseFileMarkers(reviewText);
           const parsedAnnotations = parseAnnotations(reviewText);
+          const diff = await tauriApi.fetchPRDiff(pr.owner, pr.repo, pr.number);
 
           updateTab(tabId, {
             explanation: reviewText,
             fileExplanations: Object.keys(fileMap).length > 0 ? fileMap : {},
+            diff,
             annotations: parsedAnnotations,
             isCachedReview: true,
             loading: false,
@@ -266,6 +272,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
 
       // 3. Fetch diff
       const diff = await tauriApi.fetchPRDiff(pr.owner, pr.repo, pr.number);
+      updateTab(tabId, { diff });
 
       // 4. Check repo registry and create worktree if available
       let repoPath = await tauriApi.getRepoPath(pr.owner, pr.repo);
@@ -379,7 +386,8 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err: any) {
-      updateTab(tabId, { error: err.message || 'Review failed' });
+      const errorMsg = typeof err === 'string' ? err : err?.message || JSON.stringify(err) || 'Review failed';
+      updateTab(tabId, { error: errorMsg });
       // Cleanup worktree on failure
       const tab = activeTab;
       if (tab.worktreePath && tab.repoPath) {
@@ -407,12 +415,30 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const pendingReview = activeTab.pendingReview;
 
   const addPendingComment = useCallback((comment: Omit<PendingComment, 'id'>) => {
-    const newComment: PendingComment = { ...comment, id: crypto.randomUUID() };
+    let toAdd = comment;
+
+    // GitHub's review API rejects inline comments whose path/line isn't part
+    // of the PR's diff hunks (422 Unprocessable Entity). Findings parsed from
+    // AI-generated review text can cite a stale or slightly-off file:line, so
+    // fall back to a general comment rather than letting submission fail.
+    if (toAdd.type === 'inline' && toAdd.path && toAdd.line !== undefined) {
+      const validLines = diffLines[toAdd.path];
+      if (!validLines?.has(toAdd.line)) {
+        toast({
+          title: 'Line not in diff',
+          description: `${toAdd.path}:${toAdd.line} isn't part of the PR diff — added as a general comment instead.`,
+          variant: 'warning',
+        });
+        toAdd = { ...toAdd, type: 'general', body: `**${toAdd.path}:${toAdd.line}**\n${toAdd.body}` };
+      }
+    }
+
+    const newComment: PendingComment = { ...toAdd, id: crypto.randomUUID() };
     const current = activeTab.pendingReview;
     updateTab(activeTabId, {
       pendingReview: { comments: [...current.comments, newComment] },
     });
-  }, [activeTabId, activeTab.pendingReview, updateTab]);
+  }, [activeTabId, activeTab.pendingReview, updateTab, diffLines, toast]);
 
   const removePendingComment = useCallback((id: string) => {
     const current = activeTab.pendingReview;
@@ -445,15 +471,26 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     setReviewSubmitError(null);
 
     const pending = activeTab.pendingReview;
+
+    // Final safety net: only send inline comments whose path:line is actually
+    // part of the PR diff — GitHub rejects the whole review (422) otherwise.
+    // Anything that doesn't resolve gets folded into the summary body instead.
+    const isValidInline = (c: PendingComment) =>
+      c.type === 'inline' && !!c.path && c.line !== undefined && (diffLines[c.path]?.has(c.line) ?? false);
+
     const inlineComments = pending.comments
-      .filter(c => c.type === 'inline' && c.path && c.line)
+      .filter(isValidInline)
       .map(c => ({ path: c.path!, line: c.line!, body: c.body }));
 
-    const generalComments = pending.comments.filter(c => c.type === 'general');
+    const generalComments = pending.comments.filter(
+      c => c.type === 'general' || (c.type === 'inline' && !isValidInline(c))
+    );
     const bodyParts: string[] = [];
     if (summaryBody) bodyParts.push(summaryBody);
     if (generalComments.length > 0) {
-      bodyParts.push(...generalComments.map(c => c.body));
+      bodyParts.push(...generalComments.map(c =>
+        c.type === 'inline' ? `**${c.path}:${c.line}**\n${c.body}` : c.body
+      ));
     }
     const fullBody = bodyParts.join('\n\n---\n\n') || undefined;
 
@@ -473,7 +510,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     } finally {
       setReviewSubmitting(false);
     }
-  }, [activeTab.prData, activeTab.pendingReview, clearPendingReview]);
+  }, [activeTab.prData, activeTab.pendingReview, clearPendingReview, diffLines]);
 
   return (
     <ReviewContext.Provider
@@ -503,6 +540,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         setActivePresetId,
         presets,
         annotations,
+        diffLines,
         highlightedAnnotation,
         scrollToAnnotation,
         triggerA2UI,

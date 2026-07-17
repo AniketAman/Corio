@@ -6,9 +6,11 @@ import { tauriApi } from '../hooks/useTauriApi';
 import type { editor } from 'monaco-editor';
 import { createRoot } from 'react-dom/client';
 import { DiffCommentWidget } from './DiffCommentWidget';
+import { useToast } from './ToastProvider';
 
 export function DiffViewer() {
-  const { prData, selectedFile, annotations, scrollToAnnotation, addPendingComment, pendingReview } = useReview();
+  const { prData, selectedFile, annotations, diffLines, scrollToAnnotation, addPendingComment, pendingReview } = useReview();
+  const { toast } = useToast();
   const { resolved } = useTheme();
   const [original, setOriginal] = useState('');
   const [modified, setModified] = useState('');
@@ -45,8 +47,22 @@ export function DiffViewer() {
     }
   }, []);
 
+  const isCommentableLine = useCallback((line: number): boolean => {
+    if (!selectedFile) return false;
+    return diffLines[selectedFile]?.has(line) ?? false;
+  }, [selectedFile, diffLines]);
+
   const showCommentWidget = useCallback((line: number) => {
     if (!editorRef.current || !selectedFile) return;
+
+    if (!isCommentableLine(line)) {
+      toast({
+        title: 'Line not in diff',
+        description: 'GitHub only accepts comments on lines within the PR diff.',
+        variant: 'warning',
+      });
+      return;
+    }
 
     removeWidget();
 
@@ -91,7 +107,7 @@ export function DiffViewer() {
 
     widgetRef.current = widget;
     modifiedEditor.addContentWidget(widget);
-  }, [selectedFile, addPendingComment, getPrefillForLine, removeWidget]);
+  }, [selectedFile, addPendingComment, getPrefillForLine, removeWidget, isCommentableLine, toast]);
 
   useEffect(() => {
     if (!prData || !selectedFile) {
