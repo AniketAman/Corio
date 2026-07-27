@@ -43,6 +43,7 @@ interface ReviewContextType {
   a2uiLoading: boolean;
   a2uiError: string | null;
   isCachedReview: boolean;
+  lastReviewCostUsd: number | null;
   forceReReview: () => void;
   pendingReview: PendingReview;
   addPendingComment: (comment: Omit<PendingComment, 'id'>) => void;
@@ -92,6 +93,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const a2uiLoading = activeTab.a2uiLoading;
   const a2uiError = activeTab.a2uiError;
   const isCachedReview = activeTab.isCachedReview;
+  const lastReviewCostUsd = activeTab.lastReviewCostUsd;
 
   // --- Setters that write to active tab ---
   const setPrData = useCallback((data: PRMetadata | null) => {
@@ -215,6 +217,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       a2uiPayload: null,
       a2uiError: null,
       isCachedReview: false,
+      lastReviewCostUsd: null,
       sessionId: null,
     });
 
@@ -319,6 +322,11 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         updateTab(tabId, { sessionId: sid });
       });
       unlistenFns.push(sessionUnlisten);
+
+      const costUnlisten = await tauriApi.onReviewCostForTab(tabId, (costUsd: number) => {
+        updateTab(tabId, { lastReviewCostUsd: costUsd });
+      });
+      unlistenFns.push(costUnlisten);
 
       const completePromise = new Promise<void>((resolve, reject) => {
         tauriApi.onReviewCompleteForTab(tabId, () => {
@@ -548,6 +556,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         a2uiLoading,
         a2uiError,
         isCachedReview,
+        lastReviewCostUsd,
         forceReReview,
         pendingReview,
         addPendingComment,

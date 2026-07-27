@@ -30,8 +30,13 @@ function ThemeToggle() {
   );
 }
 
+function formatCost(costUsd: number): string {
+  if (costUsd < 0.01) return '<$0.01';
+  return `$${costUsd.toFixed(2)}`;
+}
+
 export function StatusBar() {
-  const { prData, mode, currentPrUrl, pendingReview } = useReview();
+  const { prData, mode, currentPrUrl, pendingReview, lastReviewCostUsd } = useReview();
 
   const pendingCount = pendingReview.comments.length;
 
@@ -68,6 +73,11 @@ export function StatusBar() {
         )}
         {pendingCount > 0 && (
           <span className="text-accent font-medium">{pendingCount} pending</span>
+        )}
+        {lastReviewCostUsd != null && (
+          <span className="text-text-muted" title="Cost of the last review run">
+            {formatCost(lastReviewCostUsd)}
+          </span>
         )}
       </div>
       <div className="flex items-center gap-3">

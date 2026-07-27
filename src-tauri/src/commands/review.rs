@@ -33,7 +33,7 @@ fn build_review_prompt(
     };
 
     let repo_tool_hint = if repo_mode {
-        "Use the codebase tools to read related files (imports, tests, types) for deeper context."
+        "Use the codebase tools to read related files (imports, tests, types) for deeper context. If this repo has a `.codegraph/` directory, prefer the `mcp__codegraph__codegraph_explore` tool over Read/Glob/Grep for symbol lookups and call-path tracing — it returns verbatim source plus call paths in one call. Fall back to Read/Glob/Grep if no `.codegraph/` directory exists."
     } else {
         ""
     };
@@ -86,7 +86,7 @@ pub async fn start_review(
 
     if repo_mode {
         args.push("--allowedTools".to_string());
-        args.push("Read,Glob,Grep".to_string());
+        args.push("Read,Glob,Grep,mcp__codegraph__codegraph_explore".to_string());
     }
 
     // Ensure PATH includes common locations for claude CLI
@@ -194,6 +194,13 @@ pub async fn start_review(
                 if data["type"] == "content_block_delta" {
                     if let Some(text) = data["delta"]["text"].as_str() {
                         let _ = app_clone.emit("review-chunk", serde_json::json!({ "tabId": tab_id_clone, "text": text }));
+                    }
+                }
+
+                // Final result event carries the total cost for the run
+                if data["type"] == "result" {
+                    if let Some(cost) = data["total_cost_usd"].as_f64() {
+                        let _ = app_clone.emit("review-cost", serde_json::json!({ "tabId": tab_id_clone, "costUsd": cost }));
                     }
                 }
             }

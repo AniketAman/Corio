@@ -40,6 +40,7 @@ export interface TabState {
   a2uiLoading: boolean;
   a2uiError: string | null;
   isCachedReview: boolean;
+  lastReviewCostUsd: number | null;
   worktreePath: string | null;
   repoPath: string | null;
   activePresetId: string;
@@ -80,6 +81,7 @@ const createDefaultTabState = (id: string, prUrl?: string): TabState => {
     a2uiLoading: false,
     a2uiError: null,
     isCachedReview: false,
+    lastReviewCostUsd: null,
     worktreePath: null,
     repoPath: null,
     activePresetId: savedPreset,

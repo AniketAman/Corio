@@ -24,7 +24,7 @@ pub async fn send_chat_message(
 
     if worktree_path.is_some() {
         args.push("--allowedTools".to_string());
-        args.push("Read,Glob,Grep".to_string());
+        args.push("Read,Glob,Grep,mcp__codegraph__codegraph_explore".to_string());
     }
 
     // Ensure PATH includes common locations for claude CLI

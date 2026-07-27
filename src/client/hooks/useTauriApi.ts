@@ -142,6 +142,11 @@ export const tauriApi = {
       if (event.payload.tabId === tabId) callback(event.payload.sessionId);
     }),
 
+  onReviewCostForTab: (tabId: string, callback: (costUsd: number) => void): Promise<UnlistenFn> =>
+    listen<{ tabId: string; costUsd: number }>('review-cost', (event) => {
+      if (event.payload.tabId === tabId) callback(event.payload.costUsd);
+    }),
+
   onChatChunkForTab: (tabId: string, callback: (chunk: string) => void): Promise<UnlistenFn> =>
     listen<{ tabId: string; text: string }>('chat-chunk', (event) => {
       if (event.payload.tabId === tabId) callback(event.payload.text);
